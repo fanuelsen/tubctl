@@ -1,0 +1,687 @@
+{
+    "name": "Airjet",
+    "packetVersion": "0x00000004",
+    "protocolType": "standard",
+    "product_key": "fbc861733103419b9c2a09c71584cfe5",
+    "entities": [
+        {
+            "display_name": "\u673a\u667a\u4e91\u5f00\u53d1\u5957\u4ef6",
+            "attrs": [
+                {
+                    "display_name": "power",
+                    "name": "power",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 0,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 0
+                    },
+                    "type": "status_writable",
+                    "id": 0,
+                    "desc": "\u7535\u6e90\u603b\u5f00\u5173  0\uff1a\u5173\u95ed 1\uff1a\u6253\u5f00"
+                },
+                {
+                    "display_name": "heat_power",
+                    "name": "heat_power",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 0,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 1
+                    },
+                    "type": "status_writable",
+                    "id": 1,
+                    "desc": "\u52a0\u70ed\u529f\u80fd\u5f00\u5173 0\uff1a\u5173\u95ed 1\uff1a\u6253\u5f00"
+                },
+                {
+                    "display_name": "filter_power",
+                    "name": "filter_power",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 0,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 2
+                    },
+                    "type": "status_writable",
+                    "id": 2,
+                    "desc": "\u8fc7\u6ee4\u529f\u80fd\u5f00\u5173 0\uff1a\u5173\u95ed 1\uff1a\u6253\u5f00"
+                },
+                {
+                    "display_name": "wave_power",
+                    "name": "wave_power",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 0,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 3
+                    },
+                    "type": "status_writable",
+                    "id": 3,
+                    "desc": "\u6309\u6469\u529f\u80fd\u5f00\u5173 0\uff1a\u5173\u95ed 1\uff1a\u6253\u5f00"
+                },
+                {
+                    "display_name": "locked",
+                    "name": "locked",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 0,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 4
+                    },
+                    "type": "status_writable",
+                    "id": 4,
+                    "desc": "\u7ae5\u9501\u5f00\u5173(\u4fdd\u7559)\u4f46\u4e0d\u5728app\u5c55\u793a 0\uff1a\u672a\u9501\u5b9a 1\uff1a\u9501\u5b9a"
+                },
+                {
+                    "display_name": "earth",
+                    "name": "earth",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 0,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 5
+                    },
+                    "type": "status_writable",
+                    "id": 5,
+                    "desc": "\u63a5\u5730\u68c0\u6d4b\u5f00\u5173(\u4fdd\u7559)\u4f46\u4e0d\u5728app\u5c55\u793a \u51991\uff1a\u5f00\u59cb\u68c0\u6d4b\uff0c\u51990\uff1a\u65e0\u6548"
+                },
+                {
+                    "display_name": "temp_unit",
+                    "name": "temp_set_unit",
+                    "data_type": "enum",
+                    "enum": [
+                        "\u534e\u6c0f",
+                        "\u6444\u6c0f"
+                    ],
+                    "position": {
+                        "byte_offset": 0,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 6
+                    },
+                    "type": "status_writable",
+                    "id": 6,
+                    "desc": "0 \u534e\u6c0f\u5355\u4f4d\n1 \u6444\u6c0f\u5355\u4f4d"
+                },
+                {
+                    "display_name": "temp_set",
+                    "name": "temp_set",
+                    "data_type": "uint8",
+                    "position": {
+                        "byte_offset": 1,
+                        "unit": "byte",
+                        "len": 1,
+                        "bit_offset": 0
+                    },
+                    "uint_spec": {
+                        "addition": 0,
+                        "max": 255,
+                        "ratio": 1,
+                        "min": 0
+                    },
+                    "type": "status_writable",
+                    "id": 7,
+                    "desc": "\u6e29\u5ea6\u8bbe\u7f6e\n\u5355\u4f4d\u4e3a\u6444\u6c0f\u65f6:20-40\n\u5355\u4f4d\u4e3a\u534e\u6c0f\u65f6:68-104"
+                },
+                {
+                    "display_name": "heat_appm_min",
+                    "name": "heat_appm_min",
+                    "data_type": "uint16",
+                    "position": {
+                        "byte_offset": 2,
+                        "unit": "byte",
+                        "len": 2,
+                        "bit_offset": 0
+                    },
+                    "uint_spec": {
+                        "addition": 0,
+                        "max": 59940,
+                        "ratio": 1,
+                        "min": 0
+                    },
+                    "type": "status_writable",
+                    "id": 8,
+                    "desc": "\u52a0\u70ed\u9884\u7ea6\u5206\u949f\u6570,\u65f6\u95f4\u5012\u8ba1\u65f6\u52300\u540e,\u52a0\u70ed\u5f00\u59cb\u5de5\u4f5c."
+                },
+                {
+                    "display_name": "heat_timer_min",
+                    "name": "heat_timer_min",
+                    "data_type": "uint16",
+                    "position": {
+                        "byte_offset": 4,
+                        "unit": "byte",
+                        "len": 2,
+                        "bit_offset": 0
+                    },
+                    "uint_spec": {
+                        "addition": 0,
+                        "max": 59940,
+                        "ratio": 1,
+                        "min": 0
+                    },
+                    "type": "status_writable",
+                    "id": 9,
+                    "desc": "\u52a0\u70ed\u5b9a\u65f6\u5206\u949f\u6570,\u65f6\u95f4\u4e0d\u4e3a0\u65f6,\u52a0\u70ed\u5de5\u4f5c,\u65f6\u95f4\u5012\u8ba1\u65f6\u52300\u540e,\u52a0\u70ed\u505c\u6b62\u5de5\u4f5c."
+                },
+                {
+                    "display_name": "filter_appm_min",
+                    "name": "filter_appm_min",
+                    "data_type": "uint16",
+                    "position": {
+                        "byte_offset": 6,
+                        "unit": "byte",
+                        "len": 2,
+                        "bit_offset": 0
+                    },
+                    "uint_spec": {
+                        "addition": 0,
+                        "max": 59940,
+                        "ratio": 1,
+                        "min": 0
+                    },
+                    "type": "status_writable",
+                    "id": 10,
+                    "desc": "\u8fc7\u6ee4\u529f\u80fd\u7684\u9884\u7ea6\u5206\u949f\u6570,\u65f6\u95f4\u5012\u8ba1\u65f6\u52300\u540e,\u8fc7\u6ee4\u529f\u80fd\u5f00\u59cb\u5de5\u4f5c."
+                },
+                {
+                    "display_name": "filter_timer_min",
+                    "name": "filter_timer_min",
+                    "data_type": "uint16",
+                    "position": {
+                        "byte_offset": 8,
+                        "unit": "byte",
+                        "len": 2,
+                        "bit_offset": 0
+                    },
+                    "uint_spec": {
+                        "addition": 0,
+                        "max": 65535,
+                        "ratio": 1,
+                        "min": 0
+                    },
+                    "type": "status_writable",
+                    "id": 11,
+                    "desc": "\u8fc7\u6ee4\u529f\u80fd\u7684\u5b9a\u65f6\u5206\u949f\u6570,\u65f6\u95f4\u4e0d\u4e3a0\u65f6,\u8fc7\u6ee4\u5de5\u4f5c,\u65f6\u95f4\u5012\u8ba1\u65f6\u52300\u540e,\u8fc7\u6ee4\u505c\u6b62\u5de5\u4f5c."
+                },
+                {
+                    "display_name": "wave_appm_min",
+                    "name": "wave_appm_min",
+                    "data_type": "uint16",
+                    "position": {
+                        "byte_offset": 10,
+                        "unit": "byte",
+                        "len": 2,
+                        "bit_offset": 0
+                    },
+                    "uint_spec": {
+                        "addition": 0,
+                        "max": 65535,
+                        "ratio": 1,
+                        "min": 0
+                    },
+                    "type": "status_writable",
+                    "id": 12,
+                    "desc": "\u52a0\u70ed\u529f\u80fd\u7684\u9884\u7ea6\u6700\u5927\u503c\uff08\u5355\u4f4d\u8fd8\u662f\u5206\u949f\uff09"
+                },
+                {
+                    "display_name": "wave_timer_min",
+                    "name": "wave_timer_min",
+                    "data_type": "uint16",
+                    "position": {
+                        "byte_offset": 12,
+                        "unit": "byte",
+                        "len": 2,
+                        "bit_offset": 0
+                    },
+                    "uint_spec": {
+                        "addition": 0,
+                        "max": 65535,
+                        "ratio": 1,
+                        "min": 0
+                    },
+                    "type": "status_writable",
+                    "id": 13,
+                    "desc": "\u52a0\u70ed\u529f\u80fd\u7684\u5b9a\u65f6\u6700\u5927\u503c\uff08\u5355\u4f4d\u8fd8\u662f\u5206\u949f\uff09"
+                },
+                {
+                    "display_name": "temp_now",
+                    "name": "temp_now",
+                    "data_type": "uint8",
+                    "position": {
+                        "byte_offset": 14,
+                        "unit": "byte",
+                        "len": 1,
+                        "bit_offset": 0
+                    },
+                    "uint_spec": {
+                        "addition": 0,
+                        "max": 255,
+                        "ratio": 1,
+                        "min": 0
+                    },
+                    "type": "status_readonly",
+                    "id": 14,
+                    "desc": "\u5f53\u524d\u6c34\u6e29"
+                },
+                {
+                    "display_name": "heat_temp_reach",
+                    "name": "heat_temp_reach",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 15,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 0
+                    },
+                    "type": "alert",
+                    "id": 15,
+                    "desc": "\u6c34\u6e29\u8fbe\u5230\u8bbe\u7f6e\u6e29\u5ea6\uff0capp\u4e0d\u63a8\u9001\u6d88\u606f\uff0c\u6c34\u6e29\u5408\u9002,\u53ef\u4ee5\u8fdb\u884cSPA\u4e86.\napp\u4e0a\u52a0\u70ed\u6309\u952e\u7531\u7ea2\u8272\u53d8\u6210\u84dd\u8272"
+                },
+                {
+                    "display_name": "system_err1",
+                    "name": "system_err1",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 16,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 0
+                    },
+                    "type": "fault",
+                    "id": 16,
+                    "desc": "E01 \u6c34\u6d41\u5f00\u5173\u6545\u969c1.\u6c34\u6d41\u5f00\u5173\u88ab\u5361\u4f4f.\n\u63a8\u9001\u6d88\u606fE01"
+                },
+                {
+                    "display_name": "system_err2",
+                    "name": "system_err2",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 16,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 1
+                    },
+                    "type": "fault",
+                    "id": 17,
+                    "desc": "E02 \u6c34\u6d41\u5f00\u5173\u6545\u969c2.\u6c34\u6cf5\u542f\u52a8\u540e,\u6ca1\u6709\u611f\u5e94\u5230\u6c34\u6d41.\n\u63a8\u9001\u6d88\u606fE02"
+                },
+                {
+                    "display_name": "system_err3",
+                    "name": "system_err3",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 16,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 2
+                    },
+                    "type": "fault",
+                    "id": 18,
+                    "desc": "E03 \u6e29\u5ea6\u6545\u969c\u4fdd\u62a4,\u6c34\u6e29\u6e29\u5ea6\u4f4e\u4e8e4\u6444\u6c0f\u5ea6.\n\u63a8\u9001\u6d88\u606fE03"
+                },
+                {
+                    "display_name": "system_err4",
+                    "name": "system_err4",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 16,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 3
+                    },
+                    "type": "fault",
+                    "id": 19,
+                    "desc": "E04 \u6e29\u5ea6\u6545\u969c\u4fdd\u62a4,\u6c34\u6e29\u6e29\u5ea6\u9ad8\u4e8e50\u6444\u6c0f\u5ea6.\n\u63a8\u9001\u6d88\u606fE04"
+                },
+                {
+                    "display_name": "system_err5",
+                    "name": "system_err5",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 16,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 4
+                    },
+                    "type": "fault",
+                    "id": 20,
+                    "desc": "E05 \u4f20\u611f\u5668\u6545\u969c.\n\u63a8\u9001\u6d88\u606fE05"
+                },
+                {
+                    "display_name": "system_err6",
+                    "name": "system_err6",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 16,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 5
+                    },
+                    "type": "fault",
+                    "id": 21,
+                    "desc": "\u63a8\u9001\u6d88\u606fEND\uff0c\u8bbe\u5907\u8fdb\u5165\u4e86\u4f11\u7720\u72b6\u6001."
+                },
+                {
+                    "display_name": "system_err7",
+                    "name": "system_err7",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 16,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 6
+                    },
+                    "type": "fault",
+                    "id": 22,
+                    "desc": "GCF \u63a5\u5730\u6545\u969c,\u8bbe\u5907\u7684\u63a5\u5730\u7cfb\u7edf\u5931\u6548.\n\u63a8\u9001\u6d88\u606fGCF"
+                },
+                {
+                    "display_name": "system_err8",
+                    "name": "system_err8",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 16,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 7
+                    },
+                    "type": "fault",
+                    "id": 23,
+                    "desc": "E08 \u6e29\u5ea6\u6545\u969c, \u8bbe\u5907\u4e0a\u7684\u6e29\u63a7\u5f00\u5173\u5931\u6548.\n\u63a8\u9001\u6d88\u606fE08"
+                },
+                {
+                    "display_name": "system_err9",
+                    "name": "system_err9",
+                    "data_type": "bool",
+                    "position": {
+                        "byte_offset": 16,
+                        "unit": "bit",
+                        "len": 1,
+                        "bit_offset": 8
+                    },
+                    "type": "fault",
+                    "id": 24,
+                    "desc": "\u4e0d\u63a8\u9001\u6d88\u606f\uff0c\u8bbe\u5907\u8fdb\u5165\u4e86\u51ac\u5b63\u6a21\u5f0f,\u6c34\u6e29\u5c06\u4fdd\u6301\u57288\u6444\u6c0f\u5ea6."
+                }
+            ],
+            "name": "entity0",
+            "id": 0
+        }
+    ],
+    "ui": {
+        "object": {
+            "version": 4,
+            "showEditButton": false
+        },
+        "sections": [
+            {
+                "elements": [
+                    {
+                        "boolValue": false,
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.power"
+                            ],
+                            "perm": "W"
+                        },
+                        "type": "QBooleanElement",
+                        "key": "entity0.power",
+                        "title": "power"
+                    },
+                    {
+                        "boolValue": false,
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.heat_power"
+                            ],
+                            "perm": "W"
+                        },
+                        "type": "QBooleanElement",
+                        "key": "entity0.heat_power",
+                        "title": "heat_power"
+                    },
+                    {
+                        "boolValue": false,
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.filter_power"
+                            ],
+                            "perm": "W"
+                        },
+                        "type": "QBooleanElement",
+                        "key": "entity0.filter_power",
+                        "title": "filter_power"
+                    },
+                    {
+                        "boolValue": false,
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.wave_power"
+                            ],
+                            "perm": "W"
+                        },
+                        "type": "QBooleanElement",
+                        "key": "entity0.wave_power",
+                        "title": "wave_power"
+                    },
+                    {
+                        "boolValue": false,
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.locked"
+                            ],
+                            "perm": "W"
+                        },
+                        "type": "QBooleanElement",
+                        "key": "entity0.locked",
+                        "title": "locked"
+                    },
+                    {
+                        "boolValue": false,
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.earth"
+                            ],
+                            "perm": "W"
+                        },
+                        "type": "QBooleanElement",
+                        "key": "entity0.earth",
+                        "title": "earth"
+                    },
+                    {
+                        "items": [
+                            "\u534e\u6c0f",
+                            "\u6444\u6c0f"
+                        ],
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.temp_set_unit"
+                            ],
+                            "perm": "W"
+                        },
+                        "type": "QRadioElement",
+                        "key": "entity0.temp_set_unit",
+                        "title": "temp_unit"
+                    },
+                    {
+                        "title": "temp_set",
+                        "bind": "floatValue:float",
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.temp_set"
+                            ],
+                            "uint_spec": {
+                                "max": 255,
+                                "step": 1,
+                                "min": 0
+                            },
+                            "perm": "W"
+                        },
+                        "value": 0,
+                        "key": "entity0.temp_set",
+                        "maximumValue": 255,
+                        "minimumValue": 0,
+                        "type": "QFloatElement"
+                    },
+                    {
+                        "title": "heat_appm_min",
+                        "bind": "floatValue:float",
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.heat_appm_min"
+                            ],
+                            "uint_spec": {
+                                "max": 59940,
+                                "step": 1,
+                                "min": 0
+                            },
+                            "perm": "W"
+                        },
+                        "value": 0,
+                        "key": "entity0.heat_appm_min",
+                        "maximumValue": 59940,
+                        "minimumValue": 0,
+                        "type": "QFloatElement"
+                    },
+                    {
+                        "title": "heat_timer_min",
+                        "bind": "floatValue:float",
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.heat_timer_min"
+                            ],
+                            "uint_spec": {
+                                "max": 59940,
+                                "step": 1,
+                                "min": 0
+                            },
+                            "perm": "W"
+                        },
+                        "value": 0,
+                        "key": "entity0.heat_timer_min",
+                        "maximumValue": 59940,
+                        "minimumValue": 0,
+                        "type": "QFloatElement"
+                    },
+                    {
+                        "title": "filter_appm_min",
+                        "bind": "floatValue:float",
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.filter_appm_min"
+                            ],
+                            "uint_spec": {
+                                "max": 59940,
+                                "step": 1,
+                                "min": 0
+                            },
+                            "perm": "W"
+                        },
+                        "value": 0,
+                        "key": "entity0.filter_appm_min",
+                        "maximumValue": 59940,
+                        "minimumValue": 0,
+                        "type": "QFloatElement"
+                    },
+                    {
+                        "title": "filter_timer_min",
+                        "bind": "floatValue:float",
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.filter_timer_min"
+                            ],
+                            "uint_spec": {
+                                "max": 65535,
+                                "step": 1,
+                                "min": 0
+                            },
+                            "perm": "W"
+                        },
+                        "value": 0,
+                        "key": "entity0.filter_timer_min",
+                        "maximumValue": 65535,
+                        "minimumValue": 0,
+                        "type": "QFloatElement"
+                    },
+                    {
+                        "title": "wave_appm_min",
+                        "bind": "floatValue:float",
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.wave_appm_min"
+                            ],
+                            "uint_spec": {
+                                "max": 65535,
+                                "step": 1,
+                                "min": 0
+                            },
+                            "perm": "W"
+                        },
+                        "value": 0,
+                        "key": "entity0.wave_appm_min",
+                        "maximumValue": 65535,
+                        "minimumValue": 0,
+                        "type": "QFloatElement"
+                    },
+                    {
+                        "title": "wave_timer_min",
+                        "bind": "floatValue:float",
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.wave_timer_min"
+                            ],
+                            "uint_spec": {
+                                "max": 65535,
+                                "step": 1,
+                                "min": 0
+                            },
+                            "perm": "W"
+                        },
+                        "value": 0,
+                        "key": "entity0.wave_timer_min",
+                        "maximumValue": 65535,
+                        "minimumValue": 0,
+                        "type": "QFloatElement"
+                    },
+                    {
+                        "object": {
+                            "action": "entity0",
+                            "bind": [
+                                "entity0.temp_now"
+                            ],
+                            "uint_spec": {
+                                "max": 255,
+                                "step": 1,
+                                "min": 0
+                            },
+                            "perm": "N"
+                        },
+                        "type": "QLabelElement",
+                        "key": "entity0.temp_now",
+                        "title": "temp_now"
+                    }
+                ]
+            }
+        ]
+    }
+}

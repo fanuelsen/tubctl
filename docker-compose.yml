@@ -1,0 +1,17 @@
+services:
+  tubctl:
+    build: .
+    image: tubctl
+    container_name: tubctl
+    # Bridge + explicit port publish. host networking doesn't expose ports on
+    # Docker Desktop for Mac/Windows; outbound to the LAN tub works fine via
+    # the VM's NAT regardless.
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      TUB_HOST:    ${TUB_HOST:-172.31.0.105}
+      TUB_PORT:    ${TUB_PORT:-12416}
+      PORT:        3000
+      TIME_FORMAT: ${TIME_FORMAT:-24}   # "24" (default) or "12"
+      LOG_LEVEL:   ${LOG_LEVEL:-info}   # debug|info|warn|error
+    restart: unless-stopped

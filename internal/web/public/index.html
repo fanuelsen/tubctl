@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Hot tub</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --panel: #131c30;
+    --panel-2: #1a2440;
+    --line: #243456;
+    --fg: #e6ecff;
+    --muted: #8794b8;
+    --accent: #58c0ff;
+    --warn: #ffb15a;
+    --hot: #ff6a6a;
+    --good: #5dd58c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font: 15px/1.4 -apple-system, system-ui, sans-serif; }
+  body { padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px; min-height: 100vh; }
+  main { max-width: 480px; margin: 0 auto; padding: 20px 0 40px; }
+  h1 { font-size: 14px; font-weight: 500; color: var(--muted); margin: 0 0 16px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  .temps { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .temp-card { background: var(--panel); border-radius: 14px; padding: 18px; }
+  .temp-card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .temp-card .value { font-size: 44px; font-weight: 600; margin-top: 4px; line-height: 1; }
+  .temp-card .unit { font-size: 18px; color: var(--muted); margin-left: 2px; vertical-align: top; }
+
+  .panel { background: var(--panel); border-radius: 14px; padding: 18px; margin-bottom: 12px; }
+  .panel h2 { font-size: 12px; font-weight: 500; color: var(--muted); margin: 0 0 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .slider-row { display: flex; align-items: center; gap: 12px; }
+  .slider-row input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: 36px; background: transparent; }
+  .slider-row input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--panel-2); }
+  .slider-row input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); margin-top: -10px; cursor: grab; }
+  .slider-row input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--panel-2); }
+  .slider-row input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); border: 0; cursor: grab; }
+  .slider-row .readout { font-size: 22px; font-weight: 600; min-width: 56px; text-align: right; }
+
+  .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .toggle { background: var(--panel-2); border: 1px solid var(--line); color: var(--fg); border-radius: 10px; padding: 14px 16px; font-size: 15px; font-weight: 500; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 120ms; -webkit-tap-highlight-color: transparent; }
+  .toggle:hover { background: #1f2b4d; }
+  .toggle:active { transform: scale(0.98); }
+  .toggle.on { background: var(--accent); color: #001628; border-color: transparent; }
+  .toggle.on.heat { background: var(--hot); color: white; }
+  .toggle.on.bubbles { background: #7aa2ff; color: #001628; }
+  .toggle.on.lock { background: var(--warn); color: #2a1a00; }
+  .toggle .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  .toggle.on .dot { background: rgba(0,0,0,0.4); }
+
+  .status { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 13px; }
+  .status .pill { padding: 4px 10px; border-radius: 100px; background: var(--panel-2); font-weight: 500; }
+  .status .pill.good { background: rgba(93, 213, 140, 0.15); color: var(--good); }
+  .status .pill.bad { background: rgba(255, 106, 106, 0.15); color: var(--hot); }
+
+  .errors { margin-top: 10px; color: var(--hot); font-size: 13px; }
+  footer { color: var(--muted); font-size: 11px; margin-top: 16px; text-align: center; }
+  footer a { color: var(--muted); }
+
+  .sched { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; align-items: center; }
+  .sched label { color: var(--muted); font-size: 13px; }
+  .time-input {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 4px 6px;
+  }
+  .time-input select {
+    background: transparent; color: var(--fg); border: 0; padding: 6px 4px;
+    font: inherit; font-size: 16px; appearance: none; -webkit-appearance: none;
+    text-align: center; cursor: pointer; min-width: 38px;
+  }
+  .time-input select:focus { outline: 0; background: var(--line); border-radius: 4px; }
+  .time-input .sep { color: var(--muted); font-weight: 600; padding: 0 2px; }
+  .sched .actions { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 4px; }
+  .sched .actions button {
+    flex: 1; background: var(--accent); color: #001628; border: 0;
+    border-radius: 8px; padding: 12px; font: inherit; font-weight: 600;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .sched .actions button.secondary { background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); }
+  .sched .actions button:active { transform: scale(0.98); }
+  .sched .status {
+    grid-column: 1 / -1; padding-top: 8px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 13px; margin: 4px 0 0;
+  }
+  .sched .status.active { color: var(--accent); }
+  .sched-feature + .sched-feature { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .sched-feature h3 { margin: 0 0 12px; font-size: 13px; font-weight: 500; color: var(--fg); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Hot tub <span id="hostname" style="float:right;font-weight:400;text-transform:none"></span></h1>
+
+  <div class="temps">
+    <div class="temp-card">
+      <div class="label">Current</div>
+      <div class="value" id="temp-now">—<span class="unit" id="unit-now">°C</span></div>
+    </div>
+    <div class="temp-card">
+      <div class="label">Target</div>
+      <div class="value" id="temp-set">—<span class="unit" id="unit-set">°C</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Target temperature</h2>
+    <div class="slider-row">
+      <input type="range" id="temp-slider" min="20" max="40" step="1" value="34">
+      <div class="readout" id="temp-readout">34°</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Controls</h2>
+    <div class="toggles">
+      <button class="toggle" data-attr="power"        >Power    <span class="dot"></span></button>
+      <button class="toggle" data-attr="heat_power"   data-style="heat">Heater <span class="dot"></span></button>
+      <button class="toggle" data-attr="filter_power" >Filter   <span class="dot"></span></button>
+      <button class="toggle" data-attr="wave_power"   data-style="bubbles">Bubbles <span class="dot"></span></button>
+      <button class="toggle" data-attr="locked"       data-style="lock">Lock   <span class="dot"></span></button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Schedules</h2>
+    <div class="sched-feature" data-feature="heat">
+      <h3>Heater</h3>
+      <div class="sched">
+        <label>Start at</label>
+        <label>Stop at</label>
+        <div class="time-input" data-role="start"></div>
+        <div class="time-input" data-role="stop"></div>
+        <div class="actions">
+          <button data-action="save">Save</button>
+          <button class="secondary" data-action="clear">Clear</button>
+        </div>
+        <div class="status" data-role="status">no schedule</div>
+      </div>
+    </div>
+    <div class="sched-feature" data-feature="filter">
+      <h3>Filter</h3>
+      <div class="sched">
+        <label>Start at</label>
+        <label>Stop at</label>
+        <div class="time-input" data-role="start"></div>
+        <div class="time-input" data-role="stop"></div>
+        <div class="actions">
+          <button data-action="save">Save</button>
+          <button class="secondary" data-action="clear">Clear</button>
+        </div>
+        <div class="status" data-role="status">no schedule</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status">
+    <span class="pill" id="conn-pill">connecting…</span>
+    <span id="reach-pill"></span>
+  </div>
+  <div class="errors" id="errors"></div>
+
+  <footer>last updated <span id="updated">—</span> · <a href="/api/state" target="_blank">/api/state</a></footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let state = null;
+let inflight = null;
+let pendingTempTimer = null;
+
+document.getElementById("hostname").textContent = location.hostname;
+
+async function fetchState() {
+  const r = await fetch("/api/state");
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function setAttrs(updates) {
+  if (inflight) await inflight;
+  inflight = fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) })
+    .then(async (r) => { if (!r.ok) throw new Error(await r.text()); return r.json(); })
+    .finally(() => { inflight = null; });
+  const next = await inflight;
+  render(next);
+  return next;
+}
+
+function render(s) {
+  state = s;
+  const unit = s.temp_unit || "C";
+  $("temp-now").firstChild.nodeValue = s.temp_now;
+  $("temp-set").firstChild.nodeValue = s.temp_set;
+  $("unit-now").textContent = "°" + unit;
+  $("unit-set").textContent = "°" + unit;
+  const sliderEl = $("temp-slider");
+  if (document.activeElement !== sliderEl) sliderEl.value = s.temp_set;
+  $("temp-readout").textContent = sliderEl.value + "°";
+
+  for (const btn of document.querySelectorAll(".toggle")) {
+    const k = btn.dataset.attr;
+    const v = !!s[k];
+    btn.classList.toggle("on", v);
+    // Style-class only exists for some buttons; classList.toggle("") throws in Safari.
+    const style = btn.dataset.style;
+    if (style) btn.classList.toggle(style, v);
+  }
+
+  $("conn-pill").textContent = s.power ? "on" : "standby";
+  $("conn-pill").className = "pill " + (s.power ? "good" : "");
+  $("reach-pill").textContent = s.heat_power
+    ? (s.heat_temp_reach ? "at target" : "heating…")
+    : "";
+  $("reach-pill").className = "pill " + (s.heat_power ? (s.heat_temp_reach ? "good" : "") : "");
+  $("errors").textContent = s.errors && s.errors.length ? "errors: " + s.errors.join(", ") : "";
+  $("updated").textContent = new Date().toLocaleTimeString();
+}
+
+// Toggle handlers
+for (const btn of document.querySelectorAll(".toggle")) {
+  btn.addEventListener("click", async () => {
+    if (!state) return;
+    const k = btn.dataset.attr;
+    const next = !state[k];
+    btn.classList.toggle("on", next); // optimistic
+    try { await setAttrs({ [k]: next ? 1 : 0 }); }
+    catch (e) { btn.classList.toggle("on", !next); alert(e.message); }
+  });
+}
+
+// Temp slider — debounced send on stop
+$("temp-slider").addEventListener("input", (e) => {
+  $("temp-readout").textContent = e.target.value + "°";
+});
+$("temp-slider").addEventListener("change", async (e) => {
+  const v = Number(e.target.value);
+  if (!state || v === state.temp_set) return;
+  try { await setAttrs({ temp_set: v }); }
+  catch (err) { alert(err.message); }
+});
+
+// ---- time inputs (24h selects by default; 12h opt-in via /api/config) ----
+
+let timeFormat = "24";
+
+function mkOption(value, label, selected) {
+  const o = document.createElement("option");
+  o.value = value; o.textContent = label;
+  if (selected) o.selected = true;
+  return o;
+}
+
+function buildTimeInput(container) {
+  container.innerHTML = "";
+  const hSel = document.createElement("select");
+  hSel.className = "h";
+  const mSel = document.createElement("select");
+  mSel.className = "m";
+  const sep = document.createElement("span");
+  sep.className = "sep"; sep.textContent = ":";
+
+  if (timeFormat === "12") {
+    hSel.append(mkOption("", "--"));
+    for (let h = 1; h <= 12; h++) hSel.append(mkOption(String(h), String(h)));
+  } else {
+    hSel.append(mkOption("", "--"));
+    for (let h = 0; h <= 23; h++) hSel.append(mkOption(String(h).padStart(2, "0"), String(h).padStart(2, "0")));
+  }
+
+  mSel.append(mkOption("", "--"));
+  for (let m = 0; m < 60; m++) mSel.append(mkOption(String(m).padStart(2, "0"), String(m).padStart(2, "0")));
+
+  container.append(hSel, sep, mSel);
+
+  if (timeFormat === "12") {
+    const apSel = document.createElement("select");
+    apSel.className = "ap";
+    apSel.append(mkOption("AM", "AM"), mkOption("PM", "PM"));
+    container.append(apSel);
+  }
+}
+
+// Read "HH:MM" 24h from a time-input container. Empty if any select is unset.
+function getTime(container) {
+  const h = container.querySelector(".h").value;
+  const m = container.querySelector(".m").value;
+  if (h === "" || m === "") return "";
+  if (timeFormat === "12") {
+    const ap = container.querySelector(".ap").value;
+    let h24 = Number(h) % 12;
+    if (ap === "PM") h24 += 12;
+    return `${String(h24).padStart(2, "0")}:${m}`;
+  }
+  return `${h}:${m}`;
+}
+
+// Write a "HH:MM" 24h value into a time-input container (or "" to clear).
+function setTime(container, hhmm) {
+  const hSel = container.querySelector(".h");
+  const mSel = container.querySelector(".m");
+  if (!hhmm) { hSel.value = ""; mSel.value = ""; if (timeFormat === "12") container.querySelector(".ap").value = "AM"; return; }
+  const [h24, m] = hhmm.split(":");
+  mSel.value = m;
+  if (timeFormat === "12") {
+    const h = Number(h24);
+    const ap = h >= 12 ? "PM" : "AM";
+    const h12 = ((h + 11) % 12) + 1;
+    hSel.value = String(h12);
+    container.querySelector(".ap").value = ap;
+  } else {
+    hSel.value = h24;
+  }
+}
+
+// ---- schedules ----
+
+function fmtMin(m) {
+  if (!m) return null;
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r ? `${h}h ${r}m` : `${h}h`;
+}
+
+// "HH:MM" → integer minutes from now (wraps to tomorrow if time has passed)
+function timeToMinutesFromNow(hhmm) {
+  const now = new Date();
+  const [h, m] = hhmm.split(":").map(Number);
+  const target = new Date(now);
+  target.setHours(h, m, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  return Math.max(1, Math.floor((target - now) / 60000));
+}
+
+// minutes between two "HH:MM" strings, end assumed same-day or wrapping
+function minutesBetween(startHHMM, endHHMM) {
+  const [sh, sm] = startHHMM.split(":").map(Number);
+  const [eh, em] = endHHMM.split(":").map(Number);
+  let diff = (eh - sh) * 60 + (em - sm);
+  if (diff <= 0) diff += 24 * 60;
+  return diff;
+}
+
+// minutes from now → "HH:MM" wall clock
+function minutesFromNowAsTime(min) {
+  const t = new Date(Date.now() + min * 60000);
+  return `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
+}
+
+function renderSchedules(s) {
+  for (const root of document.querySelectorAll(".sched-feature")) {
+    const f = root.dataset.feature; // "heat" or "filter"
+    const appm = s[`${f}_appm_min`] ?? 0;
+    const timer = s[`${f}_timer_min`] ?? 0;
+    const statusEl = root.querySelector('[data-role="status"]');
+    const startEl = root.querySelector('[data-role="start"]');
+    const stopEl  = root.querySelector('[data-role="stop"]');
+
+    if (appm === 0 && (timer === 0 || timer === 59940 || timer === 65535)) {
+      statusEl.textContent = "no schedule";
+      statusEl.classList.remove("active");
+    } else if (appm > 0) {
+      const startsAt = minutesFromNowAsTime(appm);
+      const stopsAt = timer > 0 ? minutesFromNowAsTime(appm + timer) : null;
+      const startsIn = fmtMin(appm);
+      const dur = timer > 0 ? fmtMin(timer) : null;
+      statusEl.textContent = stopsAt
+        ? `scheduled: ${startsAt}–${stopsAt} (starts in ${startsIn}, runs ${dur})`
+        : `starts at ${startsAt} (in ${startsIn})`;
+      statusEl.classList.add("active");
+      if (!startEl.contains(document.activeElement) && !getTime(startEl)) setTime(startEl, startsAt);
+      if (!stopEl.contains(document.activeElement)  && !getTime(stopEl)  && stopsAt) setTime(stopEl, stopsAt);
+    } else {
+      // running now with a remaining timer
+      const stopsAt = minutesFromNowAsTime(timer);
+      statusEl.textContent = `running, ${fmtMin(timer)} left (stops ~${stopsAt})`;
+      statusEl.classList.add("active");
+      if (!stopEl.contains(document.activeElement) && !getTime(stopEl)) setTime(stopEl, stopsAt);
+    }
+  }
+}
+
+async function saveSchedule(feature, startHHMM, stopHHMM) {
+  if (!startHHMM || !stopHHMM) { alert("Pick both Start and Stop times"); return; }
+  const appm = timeToMinutesFromNow(startHHMM);
+  const timer = minutesBetween(startHHMM, stopHHMM);
+  // Setting appm and timer will arm the schedule; the device auto-turns-on
+  // the feature when appm counts down to 0 and stays on for `timer` minutes.
+  const updates = { [`${feature}_appm_min`]: appm, [`${feature}_timer_min`]: timer };
+  const next = await setAttrs(updates);
+  return next;
+}
+
+async function clearSchedule(feature) {
+  return setAttrs({ [`${feature}_appm_min`]: 0, [`${feature}_timer_min`]: 0 });
+}
+
+function wireSchedules() {
+  for (const root of document.querySelectorAll(".sched-feature")) {
+    const f = root.dataset.feature;
+    const startEl = root.querySelector('[data-role="start"]');
+    const stopEl  = root.querySelector('[data-role="stop"]');
+    buildTimeInput(startEl);
+    buildTimeInput(stopEl);
+    root.querySelector('[data-action="save"]').addEventListener("click", async () => {
+      try { await saveSchedule(f, getTime(startEl), getTime(stopEl)); }
+      catch (e) { alert(e.message); }
+    });
+    root.querySelector('[data-action="clear"]').addEventListener("click", async () => {
+      try {
+        setTime(startEl, "");
+        setTime(stopEl, "");
+        await clearSchedule(f);
+      } catch (e) { alert(e.message); }
+    });
+  }
+}
+
+// ---- main loop ----
+
+async function loop() {
+  try {
+    const s = await fetchState();
+    render(s);
+    renderSchedules(s);
+  } catch (e) { $("conn-pill").textContent = "offline"; $("conn-pill").className = "pill bad"; }
+  setTimeout(loop, 5000);
+}
+
+async function boot() {
+  try {
+    const cfg = await fetch("/api/config").then((r) => r.json());
+    timeFormat = cfg.timeFormat === "12" ? "12" : "24";
+  } catch (e) { /* fall back to 24h */ }
+  wireSchedules();
+  loop();
+}
+boot();
+</script>
+</body>
+</html>
