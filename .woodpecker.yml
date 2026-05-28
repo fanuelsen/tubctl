@@ -82,7 +82,11 @@ steps:
           NEW_TAG="v$${MAJOR}.$${MINOR}.$${PATCH}"
         fi
         echo "Tagging $$NEW_TAG"
-        git tag -a "$$NEW_TAG" -m "Auto-release $$NEW_TAG"
+        # Lightweight tag: tag SHA == commit SHA, so Forgejo/Woodpecker
+        # don't have to dereference the tag object to find .woodpecker.yml.
+        # Annotated tags here caused "pipeline definition not found" because
+        # the webhook payload sent the tag object's SHA, not the commit's.
+        git tag "$$NEW_TAG"
         REPO_URL=$$(echo "${CI_FORGE_URL}/${CI_REPO}.git" | sed 's|https://|https://token:'"$${CI_FORGE_TOKEN}"'@|')
         git push "$$REPO_URL" "$$NEW_TAG"
     environment:
