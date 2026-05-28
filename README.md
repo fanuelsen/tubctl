@@ -6,7 +6,7 @@ A small Go server + CLI that speaks directly to the WiFi module in your tub.
 
 ## Why
 
-The official Bestway Smart Hub app is the only first-party way to control these tubs from a phone, and it has been allowed to rot. tubctl replaces the cloud round-trip with a direct LAN connection: your browser talks to a service on your network, the service talks to the tub over plain TCP. Nothing leaves your house, nothing depends on Bestway's backend staying up.
+The official Bestway Smart Hub app is the only first-party way to control these tubs from a phone, tubctl uses direct LAN connection: your browser talks to a service on your network, the service talks to the tub over plain TCP. Nothing leaves your house, nothing depends on Bestway's backend staying up (if using the cloud version).
 
 ## What it does
 
