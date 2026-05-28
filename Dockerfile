@@ -16,3 +16,4 @@ FROM scratch
 COPY --from=build /out/tubctl /tubctl
 EXPOSE 3000
 ENTRYPOINT ["/tubctl"]
+CMD ["serve"]

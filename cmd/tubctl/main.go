@@ -1,121 +1,81 @@
-// tubctl — self-hosted LAN-only webapp for Bestway Airjet hot tubs.
+// tubctl — self-hosted LAN-only control for Bestway Airjet hot tubs.
 //
 // Speaks the Gizwits GAgent LAN protocol directly to the tub on the LAN;
 // no cloud, no Bestway account.
+//
+// Subcommands:
+//   tubctl serve         start the HTTP server + web UI (default in container)
+//   tubctl state         print current tub state once and exit
+//   tubctl set key=val   write one or more attributes and verify
+//   tubctl watch         poll status continuously and show diffs
 package main
 
 import (
-	"context"
-	"log/slog"
-	"net/http"
+	"fmt"
 	"os"
-	"os/signal"
-	"strconv"
-	"syscall"
-	"time"
-
-	"sublog.org/tubctl/internal/tub"
-	"sublog.org/tubctl/internal/web"
 )
 
 func main() {
-	cfg := loadConfig()
-	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel}))
-	slog.SetDefault(log)
-
-	tubClient := tub.NewClient(cfg.TubHost, cfg.TubPort, log)
-
-	srv, err := web.New(tubClient, cfg.TimeFormat, log)
-	if err != nil {
-		log.Error("init server", "err", err)
-		os.Exit(1)
+	if len(os.Args) < 2 {
+		usage()
+		os.Exit(2)
 	}
-
-	httpServer := &http.Server{
-		Addr:              ":" + strconv.Itoa(cfg.HTTPPort),
-		Handler:           srv.Handler(),
-		ReadHeaderTimeout: 5 * time.Second,
-	}
-
-	// initial connect (non-fatal if tub is offline; handlers will retry)
-	connCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	if err := tubClient.Connect(connCtx); err != nil {
-		log.Warn("initial tub connect failed (will retry on demand)", "err", err)
-	}
-	cancel()
-
-	log.Info("tubctl listening",
-		"addr", httpServer.Addr, "tub", hostPort{cfg.TubHost, cfg.TubPort}, "time_format", cfg.TimeFormat)
-
-	// graceful shutdown on SIGINT/SIGTERM
-	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		<-sigCh
-		log.Info("shutting down")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = httpServer.Shutdown(ctx)
-		_ = tubClient.Close()
-	}()
-
-	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Error("http serve", "err", err)
-		os.Exit(1)
+	cmd, args := os.Args[1], os.Args[2:]
+	switch cmd {
+	case "serve":
+		runServe(args)
+	case "state":
+		runState(args)
+	case "set":
+		runSet(args)
+	case "watch":
+		runWatch(args)
+	case "help", "-h", "--help":
+		usage()
+	case "version", "-v", "--version":
+		fmt.Println("tubctl", version)
+	default:
+		fmt.Fprintf(os.Stderr, "tubctl: unknown subcommand %q\n\n", cmd)
+		usage()
+		os.Exit(2)
 	}
 }
 
-// hostPort is a tiny helper for structured logging of host+port.
-type hostPort struct {
-	Host string
-	Port int
-}
+// version is overridden at build time via -ldflags="-X main.version=v0.1.2".
+var version = "dev"
 
-func (h hostPort) LogValue() slog.Value {
-	return slog.StringValue(h.Host + ":" + strconv.Itoa(h.Port))
-}
+func usage() {
+	fmt.Fprint(os.Stderr, `tubctl — LAN-only control for Bestway Airjet hot tubs.
 
-type config struct {
-	TubHost    string
-	TubPort    int
-	HTTPPort   int
-	TimeFormat string
-	LogLevel   slog.Level
-}
+USAGE
+  tubctl <subcommand> [args]
 
-func loadConfig() config {
-	c := config{
-		TubHost:    envStr("TUB_HOST", "172.31.0.105"),
-		TubPort:    envInt("TUB_PORT", 12416),
-		HTTPPort:   envInt("PORT", 3000),
-		TimeFormat: envStr("TIME_FORMAT", "24"),
-		LogLevel:   slog.LevelInfo,
-	}
-	if c.TimeFormat != "12" {
-		c.TimeFormat = "24"
-	}
-	if v := os.Getenv("LOG_LEVEL"); v != "" {
-		switch v {
-		case "debug": c.LogLevel = slog.LevelDebug
-		case "warn":  c.LogLevel = slog.LevelWarn
-		case "error": c.LogLevel = slog.LevelError
-		}
-	}
-	return c
-}
+SUBCOMMANDS
+  serve              start the HTTP server + web UI on $PORT (default 3000)
+  state              read current tub state and print it
+  set k=v [k=v...]   write attributes; values: bool=0/1, temp_set=20-40,
+                     *_appm_min and *_timer_min = uint16 minutes
+  watch              continuously poll status and print diffs
+  version            print version
+  help               this help
 
-func envStr(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
-}
+WRITABLE ATTRIBUTES
+  power heat_power filter_power wave_power locked earth temp_set_unit
+  temp_set heat_appm_min heat_timer_min filter_appm_min filter_timer_min
+  wave_appm_min wave_timer_min
 
-func envInt(key string, def int) int {
-	if v := os.Getenv(key); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			return n
-		}
-	}
-	return def
+ENVIRONMENT
+  TUB_HOST           tub IP on the LAN (default 172.31.0.105)
+  TUB_PORT           tub TCP port (default 12416)
+  PORT               HTTP server port for 'serve' (default 3000)
+  TIME_FORMAT        "24" or "12" — UI clock format (default 24)
+  LOG_LEVEL          debug|info|warn|error (default info)
+
+EXAMPLES
+  tubctl state
+  tubctl set heat_power=1 temp_set=38
+  tubctl set locked=0
+  tubctl watch
+  TUB_HOST=192.168.1.50 tubctl serve
+`)
 }
