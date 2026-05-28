@@ -1,3 +1,5 @@
+<p align="center"><img src="logo.png" alt="tubctl logo" width="220"></p>
+
 # tubctl
 
 LAN-only control for Bestway Airjet hot tubs over the Gizwits GAgent protocol. No cloud, no Bestway account.
