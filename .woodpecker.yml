@@ -94,28 +94,7 @@ steps:
       branch:
         - main
 
-  # Step 5a: Build & push image to Forgejo container registry (primary)
-  docker-release-forgejo:
-    image: woodpeckerci/plugin-docker-buildx
-    settings:
-      registry: forgejo.sublog.org
-      repo: forgejo.sublog.org/sublog.org/tubctl
-      dockerfile: Dockerfile
-      platforms: linux/amd64,linux/arm64
-      build_args:
-        VERSION: ${CI_COMMIT_TAG}
-      tags:
-        - latest
-        - ${CI_COMMIT_TAG}
-      username:
-        from_secret: forgejo_registry_user
-      password:
-        from_secret: forgejo_registry_pass
-    when:
-      event:
-        - tag
-
-  # Step 5b: Mirror image to Docker Hub for public discoverability
+  # Step 5: Build & push image to Docker Hub
   docker-release-hub:
     image: woodpeckerci/plugin-docker-buildx
     settings:
@@ -152,9 +131,6 @@ steps:
 
         ### Container image
         ```bash
-        # From Forgejo (primary)
-        docker pull forgejo.sublog.org/sublog.org/tubctl:${CI_COMMIT_TAG}
-        # Or from Docker Hub
         docker pull fanuelsen/tubctl:${CI_COMMIT_TAG}
         ```
 
