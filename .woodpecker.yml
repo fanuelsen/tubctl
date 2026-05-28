@@ -107,9 +107,9 @@ steps:
         - latest
         - ${CI_COMMIT_TAG}
       username:
-        from_secret: docker_username
+        from_secret: DOCKER_USER
       password:
-        from_secret: docker_password
+        from_secret: DOCKER_PASS
     when:
       event:
         - tag
