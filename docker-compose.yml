@@ -1,7 +1,6 @@
 services:
   tubctl:
-    build: .
-    image: tubctl
+    image: fanuelsen/tubctl:latest
     container_name: tubctl
     # Bridge + explicit port publish. host networking doesn't expose ports on
     # Docker Desktop for Mac/Windows; outbound to the LAN tub works fine via

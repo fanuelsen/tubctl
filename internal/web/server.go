@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -129,7 +130,92 @@ func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, err)
 		return
 	}
+
+	// Log what actually changed at the tub (filtered to attrs the request touched).
+	// This gives operators visibility into every control action.
+	changes := stateDiff(before, after, updates)
+	if len(changes) > 0 {
+		s.Log.Info("set", "changes", changes, "from", subset(before, updates), "ip", clientIP(r))
+	} else {
+		s.Log.Info("set (no-op)", "requested", updates, "ip", clientIP(r))
+	}
+
 	writeJSON(w, http.StatusOK, after)
+}
+
+// stateDiff returns the post-write values for any attribute in `requested` that
+// actually changed. Empty result = device didn't honor the write.
+func stateDiff(before, after *tub.Status, requested map[string]any) map[string]any {
+	a := statusToMap(after)
+	b := statusToMap(before)
+	out := map[string]any{}
+	for k := range requested {
+		if av, ok := a[k]; ok && !reflectEqual(b[k], av) {
+			out[k] = av
+		}
+	}
+	return out
+}
+
+// subset returns the before-values for the attrs in `requested`, so the log line
+// shows "from=X to=Y" pairs.
+func subset(s *tub.Status, requested map[string]any) map[string]any {
+	m := statusToMap(s)
+	out := map[string]any{}
+	for k := range requested {
+		if v, ok := m[k]; ok {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+func statusToMap(s *tub.Status) map[string]any {
+	if s == nil {
+		return nil
+	}
+	return map[string]any{
+		"power":            s.Power,
+		"heat_power":       s.HeatPower,
+		"filter_power":     s.FilterPower,
+		"wave_power":       s.WavePower,
+		"locked":           s.Locked,
+		"earth":            s.Earth,
+		"temp_set_unit":    s.TempSetUnit,
+		"temp_set":         s.TempSet,
+		"heat_appm_min":    s.HeatAppmMin,
+		"heat_timer_min":   s.HeatTimerMin,
+		"filter_appm_min":  s.FilterAppmMin,
+		"filter_timer_min": s.FilterTimerMin,
+		"wave_appm_min":    s.WaveAppmMin,
+		"wave_timer_min":   s.WaveTimerMin,
+	}
+}
+
+func reflectEqual(a, b any) bool {
+	// Cheap value equality for the types we have here (bool / uint8 / uint16 / int).
+	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
+}
+
+// clientIP best-effort extracts the requester IP for the log line.
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		return xff
+	}
+	host := r.RemoteAddr
+	if i := indexLastColon(host); i >= 0 {
+		return host[:i]
+	}
+	return host
+}
+
+func indexLastColon(s string) int {
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] == ':' {
+			return i
+		}
+	}
+	return -1
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
