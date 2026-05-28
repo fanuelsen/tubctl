@@ -49,6 +49,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/health", s.handleHealth)
 	mux.HandleFunc("GET /api/config", s.handleConfig)
 	mux.HandleFunc("GET /api/state",  s.handleState)
+	mux.HandleFunc("GET /api/events", s.handleEvents)
 	mux.HandleFunc("POST /api/set",   s.handleSet)
 	mux.Handle("/", http.FileServer(http.FS(s.Static)))
 	return mux
@@ -93,6 +94,82 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, st)
+}
+
+// handleEvents streams Status updates to the client as Server-Sent Events.
+// Sends an initial state on connect, then every Status the tub client sees —
+// both device-pushed (0x04) state-change reports and read responses. A
+// background re-read every 15s acts as a safety net in case the device doesn't
+// push for some change (e.g. slow temperature drift), and a comment ping every
+// 20s keeps idle connections alive through any intervening proxies.
+func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
+	if err := s.ensureConnected(r.Context()); err != nil {
+		writeError(w, http.StatusServiceUnavailable, err)
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	ch, cancel := s.Tub.Subscribe(4)
+	defer cancel()
+
+	sendState := func(st *tub.Status) bool {
+		b, err := json.Marshal(st)
+		if err != nil {
+			return false
+		}
+		if _, err := fmt.Fprintf(w, "event: state\ndata: %s\n\n", b); err != nil {
+			return false
+		}
+		flusher.Flush()
+		return true
+	}
+
+	// Initial snapshot so the client renders immediately without waiting for
+	// the first device-pushed update or background refresh.
+	{
+		ctx, c := context.WithTimeout(r.Context(), 5*time.Second)
+		st, err := s.Tub.Read(ctx)
+		c()
+		if err == nil && !sendState(st) {
+			return
+		}
+	}
+
+	refresh := time.NewTicker(15 * time.Second)
+	defer refresh.Stop()
+	ping := time.NewTicker(20 * time.Second)
+	defer ping.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case st, ok := <-ch:
+			if !ok {
+				return
+			}
+			if !sendState(st) {
+				return
+			}
+		case <-refresh.C:
+			ctx, c := context.WithTimeout(context.Background(), 4*time.Second)
+			_, _ = s.Tub.Read(ctx)
+			c()
+		case <-ping.C:
+			if _, err := fmt.Fprint(w, ": ping\n\n"); err != nil {
+				return
+			}
+			flusher.Flush()
+		}
+	}
 }
 
 func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {

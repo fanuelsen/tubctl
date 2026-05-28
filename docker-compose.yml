@@ -1,6 +1,13 @@
 services:
   tubctl:
-    image: fanuelsen/tubctl:latest
+    # Build locally from the Dockerfile in this repo. After code changes run
+    # `docker compose up -d --build` (or `docker compose build`) to rebuild.
+    # To pin to the published image instead, swap `build:` for
+    # `image: fanuelsen/tubctl:latest`.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tubctl:local
     container_name: tubctl
     # Bridge + explicit port publish. host networking doesn't expose ports on
     # Docker Desktop for Mac/Windows; outbound to the LAN tub works fine via

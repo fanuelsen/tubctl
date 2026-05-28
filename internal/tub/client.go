@@ -28,6 +28,10 @@ type Client struct {
 	readCh    chan *Status
 	writeCh   map[uint32]chan struct{} // seq → done signal
 	connectMu sync.Mutex               // serializes Connect attempts
+
+	subMu  sync.Mutex
+	subs   map[int]chan *Status
+	subSeq int
 }
 
 // NewClient prepares a client. Call Connect before Read/Write.
@@ -40,6 +44,7 @@ func NewClient(host string, port int, log *slog.Logger) *Client {
 		log:     log,
 		readCh:  make(chan *Status, 8),
 		writeCh: make(map[uint32]chan struct{}),
+		subs:    make(map[int]chan *Status),
 	}
 }
 
@@ -288,6 +293,9 @@ func (c *Client) dispatch(f Frame, loginDone chan<- error) {
 			<-c.readCh
 			c.readCh <- s
 		}
+		// Fan out to any active subscribers (SSE clients, etc.) so they get both
+		// device-pushed 0x04 state-change reports and our own 0x03 read responses.
+		c.broadcast(s)
 
 	case CmdWriteResp:
 		if len(f.Payload) < 4 {
@@ -334,6 +342,52 @@ func (c *Client) heartbeatLoop() {
 	}
 }
 
+// Subscribe registers a channel that receives every parsed Status the client
+// observes — both auto-pushed (0x04) and read-response (0x03) frames.
+// The returned cancel func unregisters the subscriber and closes the channel;
+// callers must invoke it (defer is fine) to avoid leaking goroutines on
+// disconnect.
+func (c *Client) Subscribe(buffer int) (<-chan *Status, func()) {
+	if buffer < 1 {
+		buffer = 1
+	}
+	ch := make(chan *Status, buffer)
+	c.subMu.Lock()
+	c.subSeq++
+	id := c.subSeq
+	c.subs[id] = ch
+	c.subMu.Unlock()
+	return ch, func() {
+		c.subMu.Lock()
+		if existing, ok := c.subs[id]; ok {
+			delete(c.subs, id)
+			close(existing)
+		}
+		c.subMu.Unlock()
+	}
+}
+
+// broadcast delivers s to all current subscribers without blocking. A slow
+// consumer's oldest queued value is discarded in favour of the new one.
+func (c *Client) broadcast(s *Status) {
+	c.subMu.Lock()
+	defer c.subMu.Unlock()
+	for _, ch := range c.subs {
+		select {
+		case ch <- s:
+		default:
+			select {
+			case <-ch:
+			default:
+			}
+			select {
+			case ch <- s:
+			default:
+			}
+		}
+	}
+}
+
 func (c *Client) markDisconnected() {
 	c.mu.Lock()
 	c.loggedIn = false
@@ -346,4 +400,13 @@ func (c *Client) markDisconnected() {
 		c.conn = nil
 	}
 	c.mu.Unlock()
+
+	// Drop subscribers so any SSE handlers waiting on the channel return
+	// promptly; clients can then reconnect through ensureConnected.
+	c.subMu.Lock()
+	for id, ch := range c.subs {
+		close(ch)
+		delete(c.subs, id)
+	}
+	c.subMu.Unlock()
 }
