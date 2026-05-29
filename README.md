@@ -12,7 +12,7 @@ The official Bestway Smart Hub app is the only first-party way to control these 
 
 ## What it does
 
-- **Web UI**: current/target temperature, toggles for heater/filter/bubbles/lock, schedule heat and filter cycles by start/stop time.
+- **Web UI**: current/target temperature, toggles for heater/filter/bubbles/lock, and an auto-stop schedule that heats now and cuts off at a chosen time — either heat-only (leaving the filter pump circulating) or heat and filter together.
 - **CLI**: read state, set attributes, stream live changes from a terminal.
 - **HTTP API**: `GET /api/state`, `POST /api/set`.
 - Single ~8 MB static binary, ~5 MB RAM at idle.

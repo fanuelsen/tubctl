@@ -168,6 +168,13 @@
   }
   .time-pick select:focus { outline: 0; background: var(--line); border-radius: 4px; }
   .time-pick .sep { color: var(--muted); font-weight: 600; padding: 0 2px; }
+  .sched-edit select.mode {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+    color: var(--fg); padding: 10px 8px; font: inherit; font-size: 15px;
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+  }
+  .sched-edit select.mode:focus { outline: 0; border-color: var(--accent); }
+  .sched-edit .hint { grid-column: 1 / -1; color: var(--muted); font-size: 12px; line-height: 1.4; margin: 2px 0 0; }
   .sched-edit .actions { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; margin-top: 2px; }
   .sched-edit .actions button[data-action="save"] {
     flex: 1; background: var(--accent); color: #001628; border: 0;
@@ -260,14 +267,6 @@
       </div>
       <div class="timeline-axis"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
       <div class="timeline-status" data-feature="heat" data-role="status">no schedule</div>
-      <div class="sched-edit" data-feature="heat">
-        <label>Start at<div class="time-pick" data-role="start"></div></label>
-        <label>Stop at<div class="time-pick" data-role="stop"></div></label>
-        <div class="actions">
-          <button data-action="save">Save schedule</button>
-          <button data-action="clear">Clear</button>
-        </div>
-      </div>
     </div>
 
     <div class="panel timeline-card">
@@ -277,11 +276,19 @@
       </div>
       <div class="timeline-axis"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
       <div class="timeline-status" data-feature="filter" data-role="status">no schedule</div>
-      <div class="sched-edit" data-feature="filter">
-        <label>Start at<div class="time-pick" data-role="start"></div></label>
+    </div>
+
+    <div class="panel">
+      <h2>Auto-stop</h2>
+      <div class="sched-edit" data-role="autostop">
         <label>Stop at<div class="time-pick" data-role="stop"></div></label>
+        <label>Then<select class="mode" data-role="mode">
+          <option value="heat">Heat off, keep filter</option>
+          <option value="all">Heat + filter off</option>
+        </select></label>
+        <p class="hint">Runs the heater now and stops it at the chosen time. The tub heats only while the filter pump runs, so "keep filter" leaves it circulating after the heat cuts out.</p>
         <div class="actions">
-          <button data-action="save">Save schedule</button>
+          <button data-action="save">Save</button>
           <button data-action="clear">Clear</button>
         </div>
       </div>
@@ -619,14 +626,6 @@ function timeToMinutesFromNow(hhmm) {
   return Math.max(1, Math.floor((target - now) / 60000));
 }
 
-function minutesBetween(startHHMM, endHHMM) {
-  const [sh, sm] = startHHMM.split(":").map(Number);
-  const [eh, em] = endHHMM.split(":").map(Number);
-  let diff = (eh - sh) * 60 + (em - sm);
-  if (diff <= 0) diff += 24 * 60;
-  return diff;
-}
-
 function minutesFromNowAsTime(min) {
   const t = new Date(Date.now() + min * 60000);
   return `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
@@ -667,8 +666,6 @@ function renderSchedules(s) {
     const timelineEl = root.querySelector(".timeline");
     const nowEl = timelineEl.querySelector('[data-role="now"]');
     const statusEl = root.querySelector('[data-role="status"]');
-    const startEl  = root.querySelector('[data-role="start"]');
-    const stopEl   = root.querySelector('[data-role="stop"]');
 
     nowEl.style.left = (nowMin / (24 * 60) * 100) + "%";
 
@@ -689,49 +686,65 @@ function renderSchedules(s) {
         ? `scheduled: ${startsAt}–${stopsAt} (starts in ${startsIn}, runs ${dur})`
         : `starts at ${startsAt} (in ${startsIn})`;
       statusEl.classList.add("active");
-      if (!pickerHasFocus(startEl) && !getTime(startEl))           setTime(startEl, startsAt);
-      if (!pickerHasFocus(stopEl)  && !getTime(stopEl)  && stopsAt) setTime(stopEl,  stopsAt);
     } else {
       // Running now with `timer` minutes left.
       const stopsAt = minutesFromNowAsTime(timer);
       paintTimeline(timelineEl, nowMin, timer, f);
       statusEl.textContent = `running, ${fmtMin(timer)} left (stops ~${stopsAt})`;
       statusEl.classList.add("active");
-      if (!pickerHasFocus(stopEl) && !getTime(stopEl)) setTime(stopEl, stopsAt);
+    }
+  }
+
+  // Reflect the live heat stop-timer into the Auto-stop picker (unless the user
+  // is mid-edit). appm==0 && timer>0 is the "running now, auto-stops" mode.
+  const autostop = document.querySelector('[data-role="autostop"]');
+  if (autostop) {
+    const stopEl = autostop.querySelector('[data-role="stop"]');
+    const ha = s.heat_appm_min ?? 0, ht = s.heat_timer_min ?? 0;
+    if (ha === 0 && ht > 0 && ht !== 59940 && ht !== 65535 &&
+        !pickerHasFocus(stopEl) && !getTime(stopEl)) {
+      setTime(stopEl, minutesFromNowAsTime(ht));
     }
   }
 }
 
-async function saveSchedule(feature, startHHMM, stopHHMM) {
-  if (!startHHMM || !stopHHMM) { alert("Pick both Start and Stop times"); return; }
-  const appm  = timeToMinutesFromNow(startHHMM);
-  const timer = minutesBetween(startHHMM, stopHHMM);
-  return setAttrs({ [`${feature}_appm_min`]: appm, [`${feature}_timer_min`]: timer });
+// Schedule a "run now, auto-stop at <stopHHMM>" session. The tub only exposes
+// relative timers (appm = countdown-to-start, timer = run duration), so we use
+// appm=0 + timer=<minutes until stop> — the "running now" mode — to avoid the
+// off-now behavior an appointment (appm>0) would cause.
+//   mode "heat" → stop the heater, leave the filter pump circulating.
+//   mode "all"  → stop heater and filter together.
+async function saveAutoStop(stopHHMM, mode) {
+  if (!stopHHMM) { alert("Pick a stop time"); return; }
+  const mins = timeToMinutesFromNow(stopHHMM);
+  const updates = {
+    heat_power: 1, heat_appm_min: 0, heat_timer_min: mins,
+    // The heater needs pump flow, so the filter is on either way; only its stop
+    // timer differs between the two modes.
+    filter_power: 1, filter_appm_min: 0,
+    filter_timer_min: mode === "all" ? mins : 0,
+  };
+  return setAttrs(updates);
 }
 
-async function clearSchedule(feature) {
-  return setAttrs({ [`${feature}_appm_min`]: 0, [`${feature}_timer_min`]: 0 });
+async function clearAutoStop() {
+  return setAttrs({ heat_appm_min: 0, heat_timer_min: 0, filter_appm_min: 0, filter_timer_min: 0 });
 }
 
-function wireSchedules() {
-  for (const root of document.querySelectorAll(".sched-edit")) {
-    const f = root.dataset.feature;
-    const startEl = root.querySelector('[data-role="start"]');
-    const stopEl  = root.querySelector('[data-role="stop"]');
-    buildTimePicker(startEl);
-    buildTimePicker(stopEl);
-    root.querySelector('[data-action="save"]').addEventListener("click", async () => {
-      try { await saveSchedule(f, getTime(startEl), getTime(stopEl)); }
-      catch (e) { alert(e.message); }
-    });
-    root.querySelector('[data-action="clear"]').addEventListener("click", async () => {
-      try {
-        setTime(startEl, "");
-        setTime(stopEl, "");
-        await clearSchedule(f);
-      } catch (e) { alert(e.message); }
-    });
-  }
+function wireAutoStop() {
+  const root = document.querySelector('[data-role="autostop"]');
+  if (!root) return;
+  const stopEl = root.querySelector('[data-role="stop"]');
+  const modeEl = root.querySelector('[data-role="mode"]');
+  buildTimePicker(stopEl);
+  root.querySelector('[data-action="save"]').addEventListener("click", async () => {
+    try { await saveAutoStop(getTime(stopEl), modeEl.value); }
+    catch (e) { alert(e.message); }
+  });
+  root.querySelector('[data-action="clear"]').addEventListener("click", async () => {
+    try { setTime(stopEl, ""); await clearAutoStop(); }
+    catch (e) { alert(e.message); }
+  });
 }
 
 // Live updates via Server-Sent Events. /api/events emits a named `state` event
@@ -769,7 +782,7 @@ async function boot() {
     timeFormat = cfg.timeFormat === "12" ? "12" : "24";
   } catch (_) { /* default 24h */ }
   wireDial();
-  wireSchedules();
+  wireAutoStop();
   listen();
 }
 boot();
