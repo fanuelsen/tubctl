@@ -58,8 +58,8 @@ func runSet(args []string) {
 
 	// Verify each requested change took effect.
 	ok := true
-	beforeMap := statusMap(before)
-	afterMap := statusMap(after)
+	beforeMap := before.Map()
+	afterMap := after.Map()
 	for k, want := range updates {
 		got := afterMap[k]
 		oldv := beforeMap[k]
@@ -157,24 +157,4 @@ func writableNames() string {
 		names = append(names, a.Name)
 	}
 	return strings.Join(names, ", ")
-}
-
-// statusMap mirrors the helper used in the web server — keep them in sync.
-func statusMap(s *tub.Status) map[string]any {
-	return map[string]any{
-		"power":            s.Power,
-		"heat_power":       s.HeatPower,
-		"filter_power":     s.FilterPower,
-		"wave_power":       s.WavePower,
-		"locked":           s.Locked,
-		"earth":            s.Earth,
-		"temp_set_unit":    s.TempSetUnit,
-		"temp_set":         int(s.TempSet),
-		"heat_appm_min":    int(s.HeatAppmMin),
-		"heat_timer_min":   int(s.HeatTimerMin),
-		"filter_appm_min":  int(s.FilterAppmMin),
-		"filter_timer_min": int(s.FilterTimerMin),
-		"wave_appm_min":    int(s.WaveAppmMin),
-		"wave_timer_min":   int(s.WaveTimerMin),
-	}
 }

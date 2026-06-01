@@ -301,11 +301,28 @@ let pendingTemp = null;  // optimistic target while dragging
 
 document.getElementById("hostname").textContent = location.hostname;
 
+// apiWrite is the single path for state-changing requests. It attaches the
+// optional auth token (stored in localStorage) and, on a 401, prompts for it
+// once and retries — so the UI works with or without AUTH_TOKEN configured.
+async function apiWrite(url, body) {
+  const send = () => {
+    const headers = { "Content-Type": "application/json" };
+    const t = localStorage.getItem("tubctl_token");
+    if (t) headers["X-Auth-Token"] = t;
+    return fetch(url, { method: url.endsWith("/schedules") ? "PUT" : "POST", headers, body: JSON.stringify(body) });
+  };
+  let r = await send();
+  if (r.status === 401) {
+    const entered = prompt("This tub requires an auth token:");
+    if (entered) { localStorage.setItem("tubctl_token", entered); r = await send(); }
+  }
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
 async function setAttrs(updates) {
   if (inflight) await inflight;
-  inflight = fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) })
-    .then(async (r) => { if (!r.ok) throw new Error(await r.text()); return r.json(); })
-    .finally(() => { inflight = null; });
+  inflight = apiWrite("/api/set", updates).finally(() => { inflight = null; });
   const next = await inflight;
   render(next);
   return next;
@@ -722,13 +739,7 @@ async function saveSchedules() {
   for (const sc of schedules) {
     if (!sc.start || !sc.stop) { alert("Each window needs a start and a stop time."); return; }
   }
-  const r = await fetch("/api/schedules", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(schedules),
-  });
-  if (!r.ok) { alert(await r.text()); return; }
-  schedules = await r.json();
+  schedules = await apiWrite("/api/schedules", schedules);
   renderScheduleEditor();
   paintScheduleTimeline();
 }

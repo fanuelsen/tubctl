@@ -40,6 +40,71 @@ var writableByName = func() map[string]WritableAttr {
 	return m
 }()
 
+// ValidateUpdates rejects an updates map that EncodeControl would otherwise
+// coerce silently: unknown attributes, non-numeric values, and out-of-range
+// numbers (which would wrap modulo 256/65536 on the wire). The HTTP /api/set
+// path must call this so it enforces the same input contract as the CLI instead
+// of pushing garbage setpoints to the device.
+func ValidateUpdates(updates map[string]any) error {
+	for name, v := range updates {
+		a, ok := writableByName[name]
+		if !ok {
+			return fmt.Errorf("unknown writable attribute: %q", name)
+		}
+		switch a.Kind {
+		case "bool", "enum":
+			switch x := v.(type) {
+			case bool:
+			case float64:
+				if x != 0 && x != 1 {
+					return fmt.Errorf("%s: expected 0 or 1", name)
+				}
+			case int:
+				if x != 0 && x != 1 {
+					return fmt.Errorf("%s: expected 0 or 1", name)
+				}
+			default:
+				return fmt.Errorf("%s: expected 0/1 or boolean, got %T", name, v)
+			}
+		case "uint8":
+			if err := checkInt(name, v, 0, 255); err != nil {
+				return err
+			}
+		case "uint16":
+			if err := checkInt(name, v, 0, 65535); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// checkInt verifies v is a whole number in [min,max]. JSON numbers decode as
+// float64, so a fractional value (e.g. 38.5) is rejected rather than truncated.
+func checkInt(name string, v any, min, max float64) error {
+	f, ok := v.(float64)
+	if !ok {
+		// Accept native ints too (non-JSON callers).
+		switch n := v.(type) {
+		case int:
+			f = float64(n)
+		case uint8:
+			f = float64(n)
+		case uint16:
+			f = float64(n)
+		default:
+			return fmt.Errorf("%s: expected a number, got %T", name, v)
+		}
+	}
+	if f != float64(int64(f)) {
+		return fmt.Errorf("%s: expected a whole number, got %v", name, f)
+	}
+	if f < min || f > max {
+		return fmt.Errorf("%s: out of range %d-%d", name, int(min), int(max))
+	}
+	return nil
+}
+
 // EncodeControl builds the p0 payload for a cmd 0x0093 (Control Device) request.
 //
 // Wire format (17 bytes total):

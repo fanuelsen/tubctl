@@ -3,32 +3,47 @@ package web
 
 import (
 	"context"
+	"crypto/subtle"
 	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"sublog.org/tubctl/internal/sched"
 	"sublog.org/tubctl/internal/tub"
 )
 
+// maxBodyBytes caps request bodies on the write endpoints so a hostile client
+// can't exhaust memory (or, for schedules, disk) with a giant payload.
+const maxBodyBytes = 64 << 10
+
+// maxSSEClients caps concurrent /api/events streams. Each holds a goroutine and
+// drives periodic tub reads; unbounded, they starve real requests (read timeout).
+const maxSSEClients = 16
+
 //go:embed all:public
 var staticFS embed.FS
 
 // Server brokers HTTP requests against a single shared tub.Client.
 type Server struct {
-	Tub        *tub.Client
-	Sched      *sched.Scheduler
-	TimeFormat string // "24" or "12"
-	Static     fs.FS
-	Log        *slog.Logger
+	Tub          *tub.Client
+	Sched        *sched.Scheduler
+	TimeFormat   string   // "24" or "12"
+	AuthToken    string   // if set, required on write endpoints
+	AllowedHosts []string // if non-empty, Host header must match (anti DNS-rebind)
+	Static       fs.FS
+	Log          *slog.Logger
 
 	connectMu sync.Mutex
+	sseCount  atomic.Int32
 }
 
 // New wires a Server with the given client, scheduler, and embedded static assets.
@@ -75,6 +90,84 @@ func (s *Server) ensureConnected(ctx context.Context) error {
 	return s.Tub.Connect(cctx)
 }
 
+// guardWrite enforces anti-CSRF / anti-DNS-rebinding checks and the optional
+// shared-secret token on state-changing requests. It returns false (and writes
+// the error response) when the request should be refused.
+//
+// The threat is a browser the victim controls being coerced into issuing the
+// request cross-origin. We layer cheap, independent defenses:
+//   - Sec-Fetch-Site: browsers tag cross-site/same-site requests; reject those.
+//   - Content-Type must be application/json, so a CORS "simple request" can't
+//     smuggle a body without first triggering (and failing) a preflight.
+//   - Optional Host allowlist defeats DNS rebinding (the rebound request still
+//     carries the attacker's Host).
+//   - Optional bearer token for actual authentication when exposed beyond a
+//     trusted LAN. Non-browser clients (no Sec-Fetch-Site header) still must
+//     pass the Content-Type and token checks.
+func (s *Server) guardWrite(w http.ResponseWriter, r *http.Request) bool {
+	switch r.Header.Get("Sec-Fetch-Site") {
+	case "cross-site", "same-site":
+		writeError(w, http.StatusForbidden, errors.New("cross-origin request rejected"))
+		return false
+	}
+	if ct := r.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		writeError(w, http.StatusUnsupportedMediaType, errors.New("Content-Type must be application/json"))
+		return false
+	}
+	if len(s.AllowedHosts) > 0 && !hostAllowed(r.Host, s.AllowedHosts) {
+		writeError(w, http.StatusForbidden, errors.New("host not allowed"))
+		return false
+	}
+	if s.AuthToken != "" && !tokenOK(r, s.AuthToken) {
+		writeError(w, http.StatusUnauthorized, errors.New("missing or invalid auth token"))
+		return false
+	}
+	return true
+}
+
+// readJSONBody size-limits and decodes a JSON request body. On failure it
+// writes the appropriate error (413 when over the cap, 400 otherwise) and
+// returns false.
+func readJSONBody(w http.ResponseWriter, r *http.Request, v any) bool {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+	if err := dec.Decode(v); err != nil {
+		var mbe *http.MaxBytesError
+		if errors.As(err, &mbe) {
+			writeError(w, http.StatusRequestEntityTooLarge, errors.New("request body too large"))
+		} else {
+			writeError(w, http.StatusBadRequest, err)
+		}
+		return false
+	}
+	return true
+}
+
+// tokenOK constant-time compares a bearer token from X-Auth-Token or
+// Authorization: Bearer against the configured secret.
+func tokenOK(r *http.Request, want string) bool {
+	got := r.Header.Get("X-Auth-Token")
+	if got == "" {
+		if a := r.Header.Get("Authorization"); strings.HasPrefix(a, "Bearer ") {
+			got = strings.TrimPrefix(a, "Bearer ")
+		}
+	}
+	return got != "" && subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
+}
+
+// hostAllowed reports whether the request Host (port stripped) is in the list.
+func hostAllowed(host string, allowed []string) bool {
+	h := host
+	if hh, _, err := net.SplitHostPort(host); err == nil {
+		h = hh
+	}
+	for _, a := range allowed {
+		if strings.EqualFold(h, a) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":        true,
@@ -108,6 +201,15 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 // push for some change (e.g. slow temperature drift), and a comment ping every
 // 20s keeps idle connections alive through any intervening proxies.
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
+	// Cap concurrent streams so a flood can't exhaust goroutines or starve the
+	// serialized tub connection. Reserve a slot before doing any work.
+	if n := s.sseCount.Add(1); n > maxSSEClients {
+		s.sseCount.Add(-1)
+		writeError(w, http.StatusServiceUnavailable, errors.New("too many event streams"))
+		return
+	}
+	defer s.sseCount.Add(-1)
+
 	if err := s.ensureConnected(r.Context()); err != nil {
 		writeError(w, http.StatusServiceUnavailable, err)
 		return
@@ -178,17 +280,26 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
-	if err := s.ensureConnected(r.Context()); err != nil {
-		writeError(w, http.StatusServiceUnavailable, err)
+	if !s.guardWrite(w, r) {
 		return
 	}
+	// Decode and validate before dialing the tub, so bad input fails fast.
 	var updates map[string]any
-	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		writeError(w, http.StatusBadRequest, err)
+	if !readJSONBody(w, r, &updates) {
 		return
 	}
 	if len(updates) == 0 {
 		writeError(w, http.StatusBadRequest, errors.New("empty update body"))
+		return
+	}
+	// Validate types/ranges so we reject bad input instead of silently wrapping
+	// it modulo 256/65536 on the wire (same contract the CLI enforces).
+	if err := tub.ValidateUpdates(updates); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	if err := s.ensureConnected(r.Context()); err != nil {
+		writeError(w, http.StatusServiceUnavailable, err)
 		return
 	}
 
@@ -234,13 +345,15 @@ func (s *Server) handleGetSchedules(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePutSchedules(w http.ResponseWriter, r *http.Request) {
+	if !s.guardWrite(w, r) {
+		return
+	}
 	if s.Sched == nil {
 		writeError(w, http.StatusServiceUnavailable, errors.New("scheduler not configured"))
 		return
 	}
 	var list []sched.Schedule
-	if err := json.NewDecoder(r.Body).Decode(&list); err != nil {
-		writeError(w, http.StatusBadRequest, err)
+	if !readJSONBody(w, r, &list) {
 		return
 	}
 	saved, err := s.Sched.Replace(list)
@@ -255,8 +368,8 @@ func (s *Server) handlePutSchedules(w http.ResponseWriter, r *http.Request) {
 // stateDiff returns the post-write values for any attribute in `requested` that
 // actually changed. Empty result = device didn't honor the write.
 func stateDiff(before, after *tub.Status, requested map[string]any) map[string]any {
-	a := statusToMap(after)
-	b := statusToMap(before)
+	a := after.Map()
+	b := before.Map()
 	out := map[string]any{}
 	for k := range requested {
 		if av, ok := a[k]; ok && !reflectEqual(b[k], av) {
@@ -269,7 +382,7 @@ func stateDiff(before, after *tub.Status, requested map[string]any) map[string]a
 // subset returns the before-values for the attrs in `requested`, so the log line
 // shows "from=X to=Y" pairs.
 func subset(s *tub.Status, requested map[string]any) map[string]any {
-	m := statusToMap(s)
+	m := s.Map()
 	out := map[string]any{}
 	for k := range requested {
 		if v, ok := m[k]; ok {
@@ -277,28 +390,6 @@ func subset(s *tub.Status, requested map[string]any) map[string]any {
 		}
 	}
 	return out
-}
-
-func statusToMap(s *tub.Status) map[string]any {
-	if s == nil {
-		return nil
-	}
-	return map[string]any{
-		"power":            s.Power,
-		"heat_power":       s.HeatPower,
-		"filter_power":     s.FilterPower,
-		"wave_power":       s.WavePower,
-		"locked":           s.Locked,
-		"earth":            s.Earth,
-		"temp_set_unit":    s.TempSetUnit,
-		"temp_set":         s.TempSet,
-		"heat_appm_min":    s.HeatAppmMin,
-		"heat_timer_min":   s.HeatTimerMin,
-		"filter_appm_min":  s.FilterAppmMin,
-		"filter_timer_min": s.FilterTimerMin,
-		"wave_appm_min":    s.WaveAppmMin,
-		"wave_timer_min":   s.WaveTimerMin,
-	}
 }
 
 func reflectEqual(a, b any) bool {

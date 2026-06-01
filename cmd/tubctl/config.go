@@ -4,25 +4,30 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type config struct {
-	TubHost    string
-	TubPort    int
-	HTTPPort   int
-	TimeFormat string
-	DataDir    string
-	LogLevel   slog.Level
+	TubHost      string
+	TubPort      int
+	HTTPPort     int
+	TimeFormat   string
+	DataDir      string
+	AuthToken    string
+	AllowedHosts []string
+	LogLevel     slog.Level
 }
 
 func loadConfig() config {
 	c := config{
-		TubHost:    envStr("TUB_HOST", "172.31.0.105"),
-		TubPort:    envInt("TUB_PORT", 12416),
-		HTTPPort:   envInt("PORT", 3000),
-		TimeFormat: envStr("TIME_FORMAT", "24"),
-		DataDir:    envStr("DATA_DIR", "data"),
-		LogLevel:   slog.LevelInfo,
+		TubHost:      envStr("TUB_HOST", "172.31.0.105"),
+		TubPort:      envInt("TUB_PORT", 12416),
+		HTTPPort:     envInt("PORT", 3000),
+		TimeFormat:   envStr("TIME_FORMAT", "24"),
+		DataDir:      envStr("DATA_DIR", "data"),
+		AuthToken:    os.Getenv("AUTH_TOKEN"),
+		AllowedHosts: splitList(os.Getenv("ALLOWED_HOSTS")),
+		LogLevel:     slog.LevelInfo,
 	}
 	if c.TimeFormat != "12" {
 		c.TimeFormat = "24"
@@ -43,6 +48,20 @@ func envStr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// splitList parses a comma-separated env value into a trimmed, non-empty slice.
+func splitList(v string) []string {
+	if v == "" {
+		return nil
+	}
+	var out []string
+	for _, part := range strings.Split(v, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func envInt(key string, def int) int {

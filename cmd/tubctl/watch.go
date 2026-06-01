@@ -55,7 +55,7 @@ func runWatch(args []string) {
 			fmt.Printf("%s  %s\n", time.Now().Format("15:04:05"), color(cRed, "read error: "+err.Error()))
 			return
 		}
-		curr := statusMap(s)
+		curr := s.Map()
 		now := time.Now().Format("15:04:05")
 		if prev == nil {
 			fmt.Printf("%s  %s\n", color(cDim, now), fmtState(curr))

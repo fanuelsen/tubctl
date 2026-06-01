@@ -30,6 +30,14 @@ func runServe(_ []string) {
 		log.Error("init server", "err", err)
 		os.Exit(1)
 	}
+	srv.AuthToken = cfg.AuthToken
+	srv.AllowedHosts = cfg.AllowedHosts
+	if cfg.AuthToken != "" {
+		log.Info("write auth token enabled")
+	}
+	if len(cfg.AllowedHosts) > 0 {
+		log.Info("host allowlist enabled", "hosts", cfg.AllowedHosts)
+	}
 
 	httpServer := &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.HTTPPort),

@@ -114,6 +114,23 @@ filter pump circulating (the heater needs that water flow), while `"all"` stops 
 pump too. Windows persist to `${DATA_DIR}/schedules.json` and apply only while the
 server is running.
 
+## Security model
+
+tubctl is designed for a **trusted LAN** — there is no per-user login. To stop a
+malicious web page (CSRF / DNS rebinding) from driving the tub through a victim's
+browser, the write endpoints (`POST /api/set`, `PUT /api/schedules`) enforce:
+
+- `Content-Type: application/json` (blocks CORS "simple request" smuggling),
+- rejection of cross-site requests (`Sec-Fetch-Site`),
+- an optional **`AUTH_TOKEN`** — when set, writes require it via `X-Auth-Token`
+  or `Authorization: Bearer`; the web UI prompts once and remembers it,
+- an optional **`ALLOWED_HOSTS`** allowlist (defeats DNS rebinding).
+
+Request bodies are size-limited and setpoints are range-validated server-side.
+Read endpoints (`/api/state`, `/api/events`) are unauthenticated by design. Don't
+expose the port to the public internet; if you must, put it behind a reverse
+proxy with TLS and auth and set `AUTH_TOKEN` + `ALLOWED_HOSTS`.
+
 ## Pairing
 
 tubctl assumes the tub is already on your home WiFi. Initial pairing still requires the official Bestway iOS/Android app: hold the tub's WiFi button for 10 seconds, then walk through the app's pairing flow — it joins the tub's temporary SoftAP and pushes your home WiFi credentials. tubctl could implement this (the Gizwits protocol command for it is documented) but it would require either monitor-mode WiFi capture to confirm the packet format, or a fake-AP setup; the value-to-effort ratio is low for something used once per device lifetime.

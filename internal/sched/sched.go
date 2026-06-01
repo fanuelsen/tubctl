@@ -26,6 +26,10 @@ const (
 	ModeAll  = "all"  // stop the heater and the filter pump
 )
 
+// maxSchedules bounds how many windows a client can store, keeping schedules.json
+// and per-tick work from growing without limit.
+const maxSchedules = 50
+
 // Schedule is one recurring daily heat window.
 type Schedule struct {
 	ID      string `json:"id"`
@@ -82,6 +86,9 @@ func (s *Scheduler) List() []Schedule {
 // Replace validates and stores a new schedule list, persists it, and resets the
 // transition tracking so the next tick reconciles against the new windows.
 func (s *Scheduler) Replace(list []Schedule) ([]Schedule, error) {
+	if len(list) > maxSchedules {
+		return nil, fmt.Errorf("too many schedules: %d (max %d)", len(list), maxSchedules)
+	}
 	cleaned := make([]Schedule, 0, len(list))
 	for i, sc := range list {
 		if _, ok := parseHHMM(sc.Start); !ok {
@@ -93,9 +100,10 @@ func (s *Scheduler) Replace(list []Schedule) ([]Schedule, error) {
 		if sc.Mode != ModeHeat && sc.Mode != ModeAll {
 			return nil, fmt.Errorf("schedule %d: bad mode %q (want %q or %q)", i, sc.Mode, ModeHeat, ModeAll)
 		}
-		if sc.ID == "" {
-			sc.ID = fmt.Sprintf("s%d-%d", time.Now().UnixNano(), i)
-		}
+		// Always assign the ID server-side. Trusting client IDs lets a caller
+		// send duplicates, which collide in the inWindow map and silently break
+		// edge detection for the masked schedule.
+		sc.ID = fmt.Sprintf("s%d-%d", time.Now().UnixNano(), i)
 		cleaned = append(cleaned, sc)
 	}
 

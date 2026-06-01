@@ -78,6 +78,30 @@ func ParseStatus(p0 []byte) (*Status, error) {
 	return s, nil
 }
 
+// Map renders the status as the attribute map the HTTP API and CLI compare
+// against. Single source of truth so the two call sites can't drift apart.
+func (s *Status) Map() map[string]any {
+	if s == nil {
+		return nil
+	}
+	return map[string]any{
+		"power":            s.Power,
+		"heat_power":       s.HeatPower,
+		"filter_power":     s.FilterPower,
+		"wave_power":       s.WavePower,
+		"locked":           s.Locked,
+		"earth":            s.Earth,
+		"temp_set_unit":    s.TempSetUnit,
+		"temp_set":         int(s.TempSet),
+		"heat_appm_min":    int(s.HeatAppmMin),
+		"heat_timer_min":   int(s.HeatTimerMin),
+		"filter_appm_min":  int(s.FilterAppmMin),
+		"filter_timer_min": int(s.FilterTimerMin),
+		"wave_appm_min":    int(s.WaveAppmMin),
+		"wave_timer_min":   int(s.WaveTimerMin),
+	}
+}
+
 func decodeErrors(b byte) []string {
 	out := []string{}
 	for i, name := range errorBits {

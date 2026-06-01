@@ -21,6 +21,8 @@ services:
       TIME_FORMAT: ${TIME_FORMAT:-24}   # "24" (default) or "12"
       TZ:          ${TZ:-UTC}           # scheduler timezone, e.g. Europe/Oslo
       DATA_DIR:    /data                # where recurring schedules are persisted
+      AUTH_TOKEN:    ${AUTH_TOKEN:-}    # optional: require token on write endpoints
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-} # optional: Host allowlist (anti DNS-rebind)
       LOG_LEVEL:   ${LOG_LEVEL:-info}   # debug|info|warn|error
     # Persist recurring schedules across rebuilds/restarts.
     volumes:

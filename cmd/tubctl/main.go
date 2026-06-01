@@ -78,6 +78,10 @@ ENVIRONMENT
   TZ                  IANA timezone for the scheduler, e.g. Europe/Oslo
                      (default UTC; the zone database is embedded in the binary)
   DATA_DIR           where recurring schedules persist (default ./data)
+  AUTH_TOKEN         if set, write endpoints require this token via
+                     X-Auth-Token or Authorization: Bearer (default off)
+  ALLOWED_HOSTS      comma-separated Host allowlist for write endpoints,
+                     defeats DNS rebinding (default off — any host)
   LOG_LEVEL          debug|info|warn|error (default info)
 
 EXAMPLES
