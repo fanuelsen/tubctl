@@ -99,8 +99,20 @@ docker exec -it tubctl /tubctl set wave_power=1
 | `POST` | `/api/set`    | `{"heat_power":1,"temp_set":38}` | new state after the write |
 | `GET`  | `/api/health` | — | `{"ok":true,"connected":true}` |
 | `GET`  | `/api/config` | — | UI config (e.g. `timeFormat`) |
+| `GET`  | `/api/schedules` | — | recurring daily windows, JSON array |
+| `PUT`  | `/api/schedules` | `[{"enabled":true,"start":"17:00","stop":"22:00","mode":"heat"}]` | the saved list |
 
 State JSON shape matches the writable attribute names plus `temp_now` (read-only current water temp), `temp_unit` (`"C"`/`"F"` friendly alias), `heat_temp_reach` (water reached set temp), and `errors` (string list of any active fault flags).
+
+### Recurring schedules
+
+The tub firmware only has one-shot countdown timers, so it can't repeat a schedule
+day to day. Instead, `tubctl serve` runs a small scheduler: each entry is a daily
+window (`start`/`stop` as 24h `HH:MM`) that heats the tub between those times. At a
+window's end, `mode` decides what stops — `"heat"` cuts the heater but keeps the
+filter pump circulating (the heater needs that water flow), while `"all"` stops the
+pump too. Windows persist to `${DATA_DIR}/schedules.json` and apply only while the
+server is running.
 
 ## Pairing
 

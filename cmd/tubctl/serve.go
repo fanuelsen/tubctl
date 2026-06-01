@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
 
+	"sublog.org/tubctl/internal/sched"
 	"sublog.org/tubctl/internal/tub"
 	"sublog.org/tubctl/internal/web"
 )
@@ -21,7 +23,9 @@ func runServe(_ []string) {
 
 	tubClient := tub.NewClient(cfg.TubHost, cfg.TubPort, log)
 
-	srv, err := web.New(tubClient, cfg.TimeFormat, log)
+	scheduler := sched.New(filepath.Join(cfg.DataDir, "schedules.json"), tubClient, log)
+
+	srv, err := web.New(tubClient, scheduler, cfg.TimeFormat, log)
 	if err != nil {
 		log.Error("init server", "err", err)
 		os.Exit(1)
@@ -39,6 +43,11 @@ func runServe(_ []string) {
 	}
 	cancel()
 
+	// Drive recurring daily schedules until shutdown.
+	schedCtx, stopSched := context.WithCancel(context.Background())
+	defer stopSched()
+	go scheduler.Run(schedCtx)
+
 	log.Info("tubctl listening",
 		"addr", httpServer.Addr, "tub", hostPort{cfg.TubHost, cfg.TubPort}, "time_format", cfg.TimeFormat)
 
@@ -47,6 +56,7 @@ func runServe(_ []string) {
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
 		log.Info("shutting down")
+		stopSched()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = httpServer.Shutdown(ctx)

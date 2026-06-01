@@ -1,0 +1,96 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "gitAuthor": "Renovate Bot <renovate@forgejo.sublog.org>",
+
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["dependencies", "security"],
+    "automerge": true,
+    "automergeType": "pr",
+    "automergeStrategy": "squash",
+    "prPriority": 10
+  },
+
+  "packageRules": [
+    {
+      "description": "Use bump strategy for Go toolchain version in go.mod",
+      "matchManagers": ["gomod"],
+      "matchDepNames": ["go"],
+      "matchDepTypes": ["golang"],
+      "rangeStrategy": "bump"
+    },
+    {
+      "description": "Group Go toolchain (go.mod) and golang Docker image into one PR",
+      "matchDepNames": ["go", "golang"],
+      "groupName": "Go toolchain",
+      "groupSlug": "go-toolchain"
+    },
+    {
+      "description": "Auto-merge minor and patch Go toolchain updates",
+      "matchDepNames": ["go", "golang"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "labels": ["dependencies", "go-toolchain"]
+    },
+    {
+      "description": "Auto-merge minor and patch updates for other Docker base images",
+      "matchDatasources": ["docker"],
+      "excludeDepNames": ["golang"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    },
+    {
+      "description": "Require manual review for major Docker image updates",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["dependencies", "major-update"]
+    },
+    {
+      "description": "Auto-merge minor and patch updates for Go dependencies",
+      "matchDatasources": ["go"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    },
+    {
+      "description": "Require manual review for major updates",
+      "matchDatasources": ["go"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["dependencies", "major-update"]
+    },
+    {
+      "description": "Group all Go dependency updates into single PR",
+      "matchDatasources": ["go"],
+      "groupName": "Go dependencies",
+      "groupSlug": "go-deps"
+    }
+  ],
+
+  "rebaseWhen": "behind-base-branch",
+
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 0,
+
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Dependency Dashboard",
+  "dependencyDashboardAutoclose": true,
+
+  "commitMessagePrefix": "chore(deps):",
+  "commitMessageAction": "update",
+  "commitMessageExtra": "to {{newVersion}}",
+
+  "prBodyColumns": ["Package", "Update", "Type", "Change"],
+  "prBodyNotes": ["{{#if (or (containsString updateType 'major') (containsString updateType 'minor'))}}:warning: This update includes breaking changes or new features. Please review carefully.{{/if}}"],
+
+  "assigneesFromCodeOwners": true,
+  "reviewersFromCodeOwners": true
+}

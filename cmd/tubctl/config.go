@@ -11,6 +11,7 @@ type config struct {
 	TubPort    int
 	HTTPPort   int
 	TimeFormat string
+	DataDir    string
 	LogLevel   slog.Level
 }
 
@@ -20,6 +21,7 @@ func loadConfig() config {
 		TubPort:    envInt("TUB_PORT", 12416),
 		HTTPPort:   envInt("PORT", 3000),
 		TimeFormat: envStr("TIME_FORMAT", "24"),
+		DataDir:    envStr("DATA_DIR", "data"),
 		LogLevel:   slog.LevelInfo,
 	}
 	if c.TimeFormat != "12" {

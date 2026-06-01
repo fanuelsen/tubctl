@@ -13,6 +13,12 @@ package main
 import (
 	"fmt"
 	"os"
+
+	// Embed the IANA timezone database in the binary. The runtime image is
+	// FROM scratch with no /usr/share/zoneinfo, so without this `time.Local`
+	// (and any TZ=Europe/Oslo) silently falls back to UTC — which would make
+	// the daily scheduler fire windows at the wrong wall-clock time.
+	_ "time/tzdata"
 )
 
 func main() {
@@ -69,6 +75,9 @@ ENVIRONMENT
   TUB_PORT           tub TCP port (default 12416)
   PORT               HTTP server port for 'serve' (default 3000)
   TIME_FORMAT        "24" or "12" — UI clock format (default 24)
+  TZ                  IANA timezone for the scheduler, e.g. Europe/Oslo
+                     (default UTC; the zone database is embedded in the binary)
+  DATA_DIR           where recurring schedules persist (default ./data)
   LOG_LEVEL          debug|info|warn|error (default info)
 
 EXAMPLES

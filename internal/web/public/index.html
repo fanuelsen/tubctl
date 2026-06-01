@@ -152,8 +152,6 @@
   .timeline-status { color: var(--muted); font-size: 12px; margin: 8px 0 0; min-height: 16px; }
   .timeline-status.active { color: var(--fg); }
 
-  .sched-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 10px; }
-  .sched-edit label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
   /* Custom hour/minute picker — native input[type=time] can't be forced to 24h. */
   .time-pick {
     display: flex; align-items: center; gap: 2px;
@@ -168,26 +166,38 @@
   }
   .time-pick select:focus { outline: 0; background: var(--line); border-radius: 4px; }
   .time-pick .sep { color: var(--muted); font-weight: 600; padding: 0 2px; }
-  .sched-edit select.mode {
+
+  /* ---- daily schedule editor ---- */
+  .sched-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .sched-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .sched-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; flex: none; }
+  .sched-row .arrow { color: var(--muted); }
+  .sched-row select.mode {
     background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
-    color: var(--fg); padding: 10px 8px; font: inherit; font-size: 15px;
+    color: var(--fg); padding: 9px 8px; font: inherit; font-size: 13px;
     appearance: none; -webkit-appearance: none; cursor: pointer;
   }
-  .sched-edit select.mode:focus { outline: 0; border-color: var(--accent); }
-  .sched-edit .hint { grid-column: 1 / -1; color: var(--muted); font-size: 12px; line-height: 1.4; margin: 2px 0 0; }
-  .sched-edit .actions { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; margin-top: 2px; }
-  .sched-edit .actions button[data-action="save"] {
+  .sched-row select.mode:focus { outline: 0; border-color: var(--accent); }
+  .sched-row .row-remove {
+    margin-left: auto; background: transparent; color: var(--muted); border: 0;
+    font-size: 16px; line-height: 1; padding: 6px 8px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sched-row .row-remove:hover { color: var(--hot); }
+  .sched-empty { color: var(--muted); font-size: 12px; margin-top: 10px; }
+  .sched-foot { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+  .sched-foot button[data-action="add"] {
+    background: transparent; color: var(--accent); border: 1px solid var(--line);
+    border-radius: 8px; padding: 9px 12px; font: inherit; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sched-foot button[data-action="save"] {
     flex: 1; background: var(--accent); color: #001628; border: 0;
     border-radius: 8px; padding: 11px; font: inherit; font-weight: 600;
     cursor: pointer; -webkit-tap-highlight-color: transparent;
   }
-  .sched-edit .actions button[data-action="clear"] {
-    background: transparent; color: var(--muted); border: 0;
-    padding: 8px 10px; font: inherit; cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .sched-edit .actions button[data-action="clear"]:hover { color: var(--fg); }
-  .sched-edit .actions button:active { transform: scale(0.98); }
+  .sched-foot button:active { transform: scale(0.98); }
+  .timeline-card .hint { color: var(--muted); font-size: 12px; line-height: 1.4; margin: 12px 0 0; }
 
   /* ---- status pills ---- */
   .status-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; margin-top: 6px; }
@@ -260,38 +270,18 @@
       </div>
     </div>
 
-    <div class="panel timeline-card">
-      <h3><span class="dot heat"></span>Heater schedule</h3>
-      <div class="timeline" data-feature="heat" data-role="timeline">
+    <div class="panel timeline-card" data-role="sched-panel">
+      <h3><span class="dot heat"></span>Daily schedule</h3>
+      <div class="timeline" data-role="timeline">
         <div class="now" data-role="now"></div>
       </div>
       <div class="timeline-axis"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
-      <div class="timeline-status" data-feature="heat" data-role="status">no schedule</div>
-    </div>
-
-    <div class="panel timeline-card">
-      <h3><span class="dot filter"></span>Filter schedule</h3>
-      <div class="timeline" data-feature="filter" data-role="timeline">
-        <div class="now" data-role="now"></div>
+      <div class="sched-list" data-role="sched-list"></div>
+      <div class="sched-foot">
+        <button data-action="add" type="button">+ Add window</button>
+        <button data-action="save" type="button">Save</button>
       </div>
-      <div class="timeline-axis"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
-      <div class="timeline-status" data-feature="filter" data-role="status">no schedule</div>
-    </div>
-
-    <div class="panel">
-      <h2>Auto-stop</h2>
-      <div class="sched-edit" data-role="autostop">
-        <label>Stop at<div class="time-pick" data-role="stop"></div></label>
-        <label>Then<select class="mode" data-role="mode">
-          <option value="heat">Heat off, keep filter</option>
-          <option value="all">Heat + filter off</option>
-        </select></label>
-        <p class="hint">Runs the heater now and stops it at the chosen time. The tub heats only while the filter pump runs, so "keep filter" leaves it circulating after the heat cuts out.</p>
-        <div class="actions">
-          <button data-action="save">Save</button>
-          <button data-action="clear">Clear</button>
-        </div>
-      </div>
+      <p class="hint">Each window heats the tub between the two times, <strong>every day</strong>. "Keep filter" leaves the pump circulating after the heat cuts out; "All off" stops the pump too. The tub has no repeat function of its own — tubctl applies these on schedule, so the server must stay running.</p>
     </div>
   </div>
 
@@ -318,7 +308,6 @@ async function setAttrs(updates) {
     .finally(() => { inflight = null; });
   const next = await inflight;
   render(next);
-  renderSchedules(next);
   return next;
 }
 
@@ -607,143 +596,149 @@ function pickerHasFocus(container) {
   return container.contains(document.activeElement);
 }
 
-// ---- schedules ----
+// ---- daily schedule ----
+//
+// The tub has no native repeat, so recurring windows live server-side. This UI
+// just edits the list (GET/PUT /api/schedules) and visualizes the windows; the
+// tubctl server applies them on time.
 
-function fmtMin(m) {
-  if (!m) return null;
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  const r = m % 60;
-  return r ? `${h}h ${r}m` : `${h}h`;
-}
-
-function timeToMinutesFromNow(hhmm) {
-  const now = new Date();
-  const [h, m] = hhmm.split(":").map(Number);
-  const target = new Date(now);
-  target.setHours(h, m, 0, 0);
-  if (target <= now) target.setDate(target.getDate() + 1);
-  return Math.max(1, Math.floor((target - now) / 60000));
-}
-
-function minutesFromNowAsTime(min) {
-  const t = new Date(Date.now() + min * 60000);
-  return `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
-}
+let schedules = [];
 
 // Convert a Date to "minutes since midnight" (0..1439).
 function dateToMinOfDay(d) { return d.getHours() * 60 + d.getMinutes(); }
 
-// Render a single planned window onto the 24h timeline.
-// Window may cross midnight; we draw up to two blocks in that case.
-function paintTimeline(featureEl, startMin, durationMin, kind) {
-  // Remove any existing blocks (keep the .now marker).
-  featureEl.querySelectorAll(".block").forEach((n) => n.remove());
-  if (durationMin <= 0) return;
+function hhmmToMin(s) {
+  if (!s) return null;
+  const [h, m] = s.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+// Paint all enabled windows + the "now" marker onto the 24h timeline. A window
+// that crosses midnight is drawn as two blocks.
+function paintScheduleTimeline() {
+  const tl = document.querySelector('[data-role="timeline"]');
+  if (!tl) return;
+  const nowEl = tl.querySelector('[data-role="now"]');
+  if (nowEl) nowEl.style.left = (dateToMinOfDay(new Date()) / (24 * 60) * 100) + "%";
+  tl.querySelectorAll(".block").forEach((n) => n.remove());
 
   const day = 24 * 60;
-  let s = ((startMin % day) + day) % day;
-  let remaining = Math.min(durationMin, day); // cap at one day
-
-  while (remaining > 0) {
-    const len = Math.min(remaining, day - s);
-    const block = document.createElement("div");
-    block.className = "block " + kind;
-    block.style.left  = (s / day * 100) + "%";
-    block.style.width = (len / day * 100) + "%";
-    featureEl.appendChild(block);
-    s = 0;
-    remaining -= len;
-  }
-}
-
-function renderSchedules(s) {
-  const nowMin = dateToMinOfDay(new Date());
-  for (const root of document.querySelectorAll(".timeline-card")) {
-    const f = root.querySelector(".timeline").dataset.feature;
-    const appm  = s[`${f}_appm_min`] ?? 0;
-    const timer = s[`${f}_timer_min`] ?? 0;
-    const timelineEl = root.querySelector(".timeline");
-    const nowEl = timelineEl.querySelector('[data-role="now"]');
-    const statusEl = root.querySelector('[data-role="status"]');
-
-    nowEl.style.left = (nowMin / (24 * 60) * 100) + "%";
-
-    const noSched = appm === 0 && (timer === 0 || timer === 59940 || timer === 65535);
-    if (noSched) {
-      paintTimeline(timelineEl, 0, 0, f);
-      statusEl.textContent = "no schedule";
-      statusEl.classList.remove("active");
-    } else if (appm > 0) {
-      // Scheduled but not yet running: window is [now+appm, now+appm+timer]
-      const startWall = nowMin + appm;
-      const startsAt = minutesFromNowAsTime(appm);
-      const stopsAt  = timer > 0 ? minutesFromNowAsTime(appm + timer) : null;
-      const startsIn = fmtMin(appm);
-      const dur      = timer > 0 ? fmtMin(timer) : null;
-      paintTimeline(timelineEl, startWall, timer, f);
-      statusEl.textContent = stopsAt
-        ? `scheduled: ${startsAt}–${stopsAt} (starts in ${startsIn}, runs ${dur})`
-        : `starts at ${startsAt} (in ${startsIn})`;
-      statusEl.classList.add("active");
-    } else {
-      // Running now with `timer` minutes left.
-      const stopsAt = minutesFromNowAsTime(timer);
-      paintTimeline(timelineEl, nowMin, timer, f);
-      statusEl.textContent = `running, ${fmtMin(timer)} left (stops ~${stopsAt})`;
-      statusEl.classList.add("active");
-    }
-  }
-
-  // Reflect the live heat stop-timer into the Auto-stop picker (unless the user
-  // is mid-edit). appm==0 && timer>0 is the "running now, auto-stops" mode.
-  const autostop = document.querySelector('[data-role="autostop"]');
-  if (autostop) {
-    const stopEl = autostop.querySelector('[data-role="stop"]');
-    const ha = s.heat_appm_min ?? 0, ht = s.heat_timer_min ?? 0;
-    if (ha === 0 && ht > 0 && ht !== 59940 && ht !== 65535 &&
-        !pickerHasFocus(stopEl) && !getTime(stopEl)) {
-      setTime(stopEl, minutesFromNowAsTime(ht));
+  for (const sc of schedules) {
+    if (sc.enabled === false) continue;
+    const a = hhmmToMin(sc.start), b = hhmmToMin(sc.stop);
+    if (a == null || b == null) continue;
+    let remaining = ((b - a) % day + day) % day; // window length, handles wrap
+    if (remaining === 0) continue;
+    let s = a;
+    const kind = sc.mode === "all" ? "filter" : "heat";
+    while (remaining > 0) {
+      const len = Math.min(remaining, day - s);
+      const block = document.createElement("div");
+      block.className = "block " + kind;
+      block.style.left  = (s / day * 100) + "%";
+      block.style.width = (len / day * 100) + "%";
+      tl.appendChild(block);
+      s = 0;
+      remaining -= len;
     }
   }
 }
 
-// Schedule a "run now, auto-stop at <stopHHMM>" session. The tub only exposes
-// relative timers (appm = countdown-to-start, timer = run duration), so we use
-// appm=0 + timer=<minutes until stop> — the "running now" mode — to avoid the
-// off-now behavior an appointment (appm>0) would cause.
-//   mode "heat" → stop the heater, leave the filter pump circulating.
-//   mode "all"  → stop heater and filter together.
-async function saveAutoStop(stopHHMM, mode) {
-  if (!stopHHMM) { alert("Pick a stop time"); return; }
-  const mins = timeToMinutesFromNow(stopHHMM);
-  const updates = {
-    heat_power: 1, heat_appm_min: 0, heat_timer_min: mins,
-    // The heater needs pump flow, so the filter is on either way; only its stop
-    // timer differs between the two modes.
-    filter_power: 1, filter_appm_min: 0,
-    filter_timer_min: mode === "all" ? mins : 0,
-  };
-  return setAttrs(updates);
-}
+// Rebuild the editable rows from the `schedules` array. Each control writes its
+// change straight back into the array so Save just PUTs the array.
+function renderScheduleEditor() {
+  const list = document.querySelector('[data-role="sched-list"]');
+  if (!list) return;
+  list.innerHTML = "";
+  if (schedules.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "sched-empty";
+    empty.textContent = "No windows yet — add one below.";
+    list.append(empty);
+    return;
+  }
+  schedules.forEach((sc, i) => {
+    const row = document.createElement("div");
+    row.className = "sched-row";
 
-async function clearAutoStop() {
-  return setAttrs({ heat_appm_min: 0, heat_timer_min: 0, filter_appm_min: 0, filter_timer_min: 0 });
-}
+    const en = document.createElement("input");
+    en.type = "checkbox";
+    en.checked = sc.enabled !== false;
+    en.title = "Enabled";
+    en.addEventListener("change", () => { schedules[i].enabled = en.checked; paintScheduleTimeline(); });
 
-function wireAutoStop() {
-  const root = document.querySelector('[data-role="autostop"]');
-  if (!root) return;
-  const stopEl = root.querySelector('[data-role="stop"]');
-  const modeEl = root.querySelector('[data-role="mode"]');
-  buildTimePicker(stopEl);
-  root.querySelector('[data-action="save"]').addEventListener("click", async () => {
-    try { await saveAutoStop(getTime(stopEl), modeEl.value); }
-    catch (e) { alert(e.message); }
+    const start = document.createElement("div");
+    start.className = "time-pick";
+    buildTimePicker(start);
+    setTime(start, sc.start || "");
+    start.addEventListener("change", () => { schedules[i].start = getTime(start); paintScheduleTimeline(); });
+
+    const arrow = document.createElement("span");
+    arrow.className = "arrow";
+    arrow.textContent = "→";
+
+    const stop = document.createElement("div");
+    stop.className = "time-pick";
+    buildTimePicker(stop);
+    setTime(stop, sc.stop || "");
+    stop.addEventListener("change", () => { schedules[i].stop = getTime(stop); paintScheduleTimeline(); });
+
+    const mode = document.createElement("select");
+    mode.className = "mode";
+    mode.innerHTML = '<option value="heat">Keep filter</option><option value="all">All off</option>';
+    mode.value = sc.mode === "all" ? "all" : "heat";
+    mode.addEventListener("change", () => { schedules[i].mode = mode.value; paintScheduleTimeline(); });
+
+    const rm = document.createElement("button");
+    rm.type = "button";
+    rm.className = "row-remove";
+    rm.textContent = "✕";
+    rm.title = "Remove";
+    rm.addEventListener("click", () => { schedules.splice(i, 1); renderScheduleEditor(); paintScheduleTimeline(); });
+
+    row.append(en, start, arrow, stop, mode, rm);
+    list.append(row);
   });
-  root.querySelector('[data-action="clear"]').addEventListener("click", async () => {
-    try { setTime(stopEl, ""); await clearAutoStop(); }
-    catch (e) { alert(e.message); }
+}
+
+function addWindow() {
+  schedules.push({ enabled: true, start: "17:00", stop: "22:00", mode: "heat" });
+  renderScheduleEditor();
+  paintScheduleTimeline();
+}
+
+async function fetchSchedules() {
+  try {
+    const r = await fetch("/api/schedules");
+    const data = await r.json();
+    schedules = Array.isArray(data) ? data : [];
+  } catch (_) { schedules = []; }
+  renderScheduleEditor();
+  paintScheduleTimeline();
+}
+
+async function saveSchedules() {
+  for (const sc of schedules) {
+    if (!sc.start || !sc.stop) { alert("Each window needs a start and a stop time."); return; }
+  }
+  const r = await fetch("/api/schedules", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(schedules),
+  });
+  if (!r.ok) { alert(await r.text()); return; }
+  schedules = await r.json();
+  renderScheduleEditor();
+  paintScheduleTimeline();
+}
+
+function wireSchedulePanel() {
+  const root = document.querySelector('[data-role="sched-panel"]');
+  if (!root) return;
+  root.querySelector('[data-action="add"]').addEventListener("click", addWindow);
+  root.querySelector('[data-action="save"]').addEventListener("click", async () => {
+    try { await saveSchedules(); } catch (e) { alert(e.message); }
   });
 }
 
@@ -763,7 +758,6 @@ function listen() {
     try {
       const s = JSON.parse(ev.data);
       render(s);
-      renderSchedules(s);
     } catch (_) {}
   });
   es.onerror = () => {
@@ -782,7 +776,9 @@ async function boot() {
     timeFormat = cfg.timeFormat === "12" ? "12" : "24";
   } catch (_) { /* default 24h */ }
   wireDial();
-  wireAutoStop();
+  wireSchedulePanel();
+  await fetchSchedules();                  // builds pickers; needs timeFormat first
+  setInterval(paintScheduleTimeline, 60000); // keep the "now" marker moving
   listen();
 }
 boot();

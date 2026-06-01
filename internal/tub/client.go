@@ -20,6 +20,13 @@ type Client struct {
 	addr string
 	log  *slog.Logger
 
+	// opMu serializes whole request→response round-trips (Read/Write). Without
+	// it, two concurrent Reads both drain readCh and both wait on it, so one can
+	// consume the other's response and the loser times out. The HTTP set path
+	// (read-write-read), the SSE background refresh, and the scheduler all issue
+	// reads/writes concurrently, so this must be held for each full exchange.
+	opMu sync.Mutex
+
 	mu        sync.Mutex
 	conn      net.Conn
 	loggedIn  bool
@@ -144,6 +151,8 @@ func (c *Client) Read(ctx context.Context) (*Status, error) {
 	if !c.LoggedIn() {
 		return nil, errors.New("not logged in")
 	}
+	c.opMu.Lock()
+	defer c.opMu.Unlock()
 	// drain any pushed-but-not-consumed status frames first to get the freshest read
 	for {
 		select {
@@ -180,6 +189,8 @@ func (c *Client) Write(ctx context.Context, updates map[string]any, current *Sta
 	if !c.LoggedIn() {
 		return errors.New("not logged in")
 	}
+	c.opMu.Lock()
+	defer c.opMu.Unlock()
 	p0, err := EncodeControl(updates, current)
 	if err != nil {
 		return err

@@ -19,5 +19,13 @@ services:
       TUB_PORT:    ${TUB_PORT:-12416}
       PORT:        3000
       TIME_FORMAT: ${TIME_FORMAT:-24}   # "24" (default) or "12"
+      TZ:          ${TZ:-UTC}           # scheduler timezone, e.g. Europe/Oslo
+      DATA_DIR:    /data                # where recurring schedules are persisted
       LOG_LEVEL:   ${LOG_LEVEL:-info}   # debug|info|warn|error
+    # Persist recurring schedules across rebuilds/restarts.
+    volumes:
+      - tubctl-data:/data
     restart: unless-stopped
+
+volumes:
+  tubctl-data:

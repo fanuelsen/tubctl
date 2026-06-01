@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"sublog.org/tubctl/internal/sched"
 	"sublog.org/tubctl/internal/tub"
 )
 
@@ -22,6 +23,7 @@ var staticFS embed.FS
 // Server brokers HTTP requests against a single shared tub.Client.
 type Server struct {
 	Tub        *tub.Client
+	Sched      *sched.Scheduler
 	TimeFormat string // "24" or "12"
 	Static     fs.FS
 	Log        *slog.Logger
@@ -29,14 +31,15 @@ type Server struct {
 	connectMu sync.Mutex
 }
 
-// New wires a Server with the given client and embedded static assets.
-func New(tubClient *tub.Client, timeFormat string, log *slog.Logger) (*Server, error) {
+// New wires a Server with the given client, scheduler, and embedded static assets.
+func New(tubClient *tub.Client, scheduler *sched.Scheduler, timeFormat string, log *slog.Logger) (*Server, error) {
 	sub, err := fs.Sub(staticFS, "public")
 	if err != nil {
 		return nil, err
 	}
 	return &Server{
 		Tub:        tubClient,
+		Sched:      scheduler,
 		TimeFormat: timeFormat,
 		Static:     sub,
 		Log:        log,
@@ -51,6 +54,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/state",  s.handleState)
 	mux.HandleFunc("GET /api/events", s.handleEvents)
 	mux.HandleFunc("POST /api/set",   s.handleSet)
+	mux.HandleFunc("GET /api/schedules", s.handleGetSchedules)
+	mux.HandleFunc("PUT /api/schedules", s.handlePutSchedules)
 	mux.Handle("/", http.FileServer(http.FS(s.Static)))
 	return mux
 }
@@ -218,6 +223,33 @@ func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, after)
+}
+
+func (s *Server) handleGetSchedules(w http.ResponseWriter, r *http.Request) {
+	if s.Sched == nil {
+		writeJSON(w, http.StatusOK, []sched.Schedule{})
+		return
+	}
+	writeJSON(w, http.StatusOK, s.Sched.List())
+}
+
+func (s *Server) handlePutSchedules(w http.ResponseWriter, r *http.Request) {
+	if s.Sched == nil {
+		writeError(w, http.StatusServiceUnavailable, errors.New("scheduler not configured"))
+		return
+	}
+	var list []sched.Schedule
+	if err := json.NewDecoder(r.Body).Decode(&list); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	saved, err := s.Sched.Replace(list)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	s.Log.Info("schedules updated", "count", len(saved), "ip", clientIP(r))
+	writeJSON(w, http.StatusOK, saved)
 }
 
 // stateDiff returns the post-write values for any attribute in `requested` that
