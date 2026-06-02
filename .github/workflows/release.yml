@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Build binary
+        run: |
+          go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -trimpath -o tubctl ./cmd/tubctl
+          chmod +x tubctl
+          ls -lh tubctl
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: tubctl
+          body: |
+            ## tubctl ${{ github.ref_name }}
+
+            LAN-only control for Bestway Airjet hot tubs over the Gizwits protocol.
+
+            ### Container image (GitHub Container Registry)
+            ```bash
+            docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ```
+
+            ### Container image (Docker Hub)
+            ```bash
+            docker pull fanuelsen/tubctl:${{ github.ref_name }}
+            ```
+
+            ### Binary
+            Download `tubctl` from assets below. Static linux/amd64; build from source for other arches.
+
+            ```bash
+            chmod +x tubctl
+            sudo mv tubctl /usr/local/bin/tubctl
+            TUB_HOST=192.168.x.x tubctl
+            ```
+          draft: false
+          prerelease: false
