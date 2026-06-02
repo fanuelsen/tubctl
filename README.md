@@ -6,6 +6,8 @@ LAN-only control for Bestway Airjet hot tubs over the Gizwits GAgent protocol. N
 
 A small Go server + CLI that speaks directly to the WiFi module in your tub.
 
+Disclaimer: This is absolutely not vibecoded!!!11 Every line of code was carefully engineered after asking Claude, please make this secure and bulletproof, make no mistakes.
+
 ## Why
 
 The official Bestway Smart Hub app is the only first-party way to control these tubs from a phone, tubctl uses direct LAN connection: your browser talks to a service on your network, the service talks to the tub over plain TCP. Nothing leaves your house, nothing depends on Bestway's backend staying up (if using the cloud version).
