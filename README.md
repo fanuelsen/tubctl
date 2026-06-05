@@ -42,17 +42,22 @@ docker run -d --restart unless-stopped \
 # open http://localhost:3000
 ```
 
+Images are published to both **Docker Hub** (`fanuelsen/tubctl`) and the
+**GitHub Container Registry** (`ghcr.io/fanuelsen/tubctl`) — use whichever you
+prefer; they're built from the same source and tagged identically (`latest` plus
+each `vX.Y.Z` release). Both publish `linux/amd64` and `linux/arm64`.
+
 Or with the included compose file:
 
 ```bash
-git clone https://forgejo.sublog.org/sublog.org/tubctl.git
+git clone https://github.com/fanuelsen/tubctl.git
 cd tubctl
 TUB_HOST=192.168.1.50 docker compose up -d
 ```
 
 ### Standalone binary
 
-Download from the [Forgejo releases page](https://forgejo.sublog.org/sublog.org/tubctl/releases) (linux/amd64), or build from source:
+Download from the [GitHub releases page](https://github.com/fanuelsen/tubctl/releases) (linux/amd64), or build from source:
 
 ```bash
 go build -o tubctl ./cmd/tubctl
@@ -69,6 +74,10 @@ All configuration is via environment variables:
 | `TUB_PORT` | `12416` | Gizwits TCP control port |
 | `PORT` | `3000` | HTTP server port (serve mode) |
 | `TIME_FORMAT` | `24` | UI clock format: `24` or `12` |
+| `TZ` | `UTC` | scheduler timezone (IANA name, e.g. `Europe/Oslo`) |
+| `DATA_DIR` | `./data` | where recurring schedules persist (`schedules.json`); the Docker image uses `/data` |
+| `AUTH_TOKEN` | _(unset)_ | optional shared secret required on write endpoints (see [Security model](#security-model)) |
+| `ALLOWED_HOSTS` | _(unset)_ | optional comma-separated Host allowlist (anti DNS-rebinding) |
 | `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
 
 ## CLI
@@ -103,6 +112,7 @@ docker exec -it tubctl /tubctl set wave_power=1
 | `POST` | `/api/set`    | `{"heat_power":1,"temp_set":38}` | new state after the write |
 | `GET`  | `/api/health` | — | `{"ok":true,"connected":true}` |
 | `GET`  | `/api/config` | — | UI config (e.g. `timeFormat`) |
+| `GET`  | `/api/events` | — | server-sent event stream of live state changes (used by the web UI) |
 | `GET`  | `/api/schedules` | — | recurring daily windows, JSON array |
 | `PUT`  | `/api/schedules` | `[{"enabled":true,"start":"17:00","stop":"22:00","mode":"heat"}]` | the saved list |
 
