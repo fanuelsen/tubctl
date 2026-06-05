@@ -1,7 +1,7 @@
 steps:
   # Step 1: Run tests
   test:
-    image: golang:1.26.3-alpine
+    image: golang:1.26.4-alpine
     commands:
       - go test -v ./...
     when:
@@ -12,7 +12,7 @@ steps:
 
   # Step 2: Security audit (fail only on fixable vulnerabilities)
   security:
-    image: golang:1.26.3-alpine
+    image: golang:1.26.4-alpine
     commands:
       - go install golang.org/x/vuln/cmd/govulncheck@latest
       - |
@@ -46,7 +46,7 @@ steps:
 
   # Step 3: Build binary (proves it compiles + reports size)
   build:
-    image: golang:1.26.3-alpine
+    image: golang:1.26.4-alpine
     commands:
       - apk add --no-cache git
       - CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=${CI_COMMIT_TAG:-dev}" -trimpath -o tubctl ./cmd/tubctl
