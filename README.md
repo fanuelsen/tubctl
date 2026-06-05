@@ -6,6 +6,8 @@ LAN-only control for Bestway Airjet hot tubs over the Gizwits GAgent protocol. N
 
 A small Go server + CLI that speaks directly to the WiFi module in your tub.
 
+<p align="center"><img src="screenshot.png" alt="tubctl web interface" width="320"></p>
+
 Disclaimer: This is absolutely not vibecoded!!!11 Every line of code was carefully engineered after asking Claude, please make this secure and bulletproof, make no mistakes.
 
 ## Why
