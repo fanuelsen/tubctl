@@ -9,8 +9,7 @@
     "labels": ["dependencies", "security"],
     "automerge": true,
     "automergeType": "pr",
-    "automergeStrategy": "squash",
-    "prPriority": 10
+    "automergeStrategy": "squash"
   },
 
   "packageRules": [
@@ -39,7 +38,7 @@
     {
       "description": "Auto-merge minor and patch updates for other Docker base images",
       "matchDatasources": ["docker"],
-      "excludeDepNames": ["golang"],
+      "matchDepNames": ["!golang"],
       "matchUpdateTypes": ["minor", "patch"],
       "automerge": true,
       "automergeType": "pr",
