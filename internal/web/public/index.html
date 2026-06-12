@@ -244,8 +244,8 @@
         <path class="fill"  id="dial-fill"/>
         <circle class="now-tick" id="dial-now" r="5"/>
         <circle class="thumb"    id="dial-thumb" r="14"/>
-        <text class="label-min" x="60"  y="270">20°</text>
-        <text class="label-max" x="260" y="270" text-anchor="end">40°</text>
+        <text class="label-min" id="dial-min" x="60"  y="270">20°</text>
+        <text class="label-max" id="dial-max" x="260" y="270" text-anchor="end">40°</text>
         <text class="center-now" x="160" y="148" id="dial-center"><tspan id="dial-current">—</tspan><tspan class="center-unit" id="dial-unit">°C</tspan></text>
         <text class="center-target" x="160" y="200" id="dial-target">Target —°</text>
       </svg>
@@ -363,10 +363,19 @@ function setPill(id, label, kind, visible = true) {
 // ---- circular dial ----
 //
 // 270° arc from -135° (bottom-left) clockwise through 0° (top) to +135° (bottom-right).
-// Temperature range 20..40 °C maps linearly onto that arc.
+// The temperature range maps linearly onto that arc and follows the tub's unit:
+// 20–40 °C or the equivalent 68–104 °F.
 
-const TEMP_MIN = 20, TEMP_MAX = 40;
+let TEMP_MIN = 20, TEMP_MAX = 40;
 const ANGLE_MIN = -135, ANGLE_MAX = 135;
+
+function setTempRange(unit) {
+  const [min, max] = unit === "F" ? [68, 104] : [20, 40];
+  if (min === TEMP_MIN) return;
+  TEMP_MIN = min; TEMP_MAX = max;
+  $("dial-min").textContent = min + "°";
+  $("dial-max").textContent = max + "°";
+}
 const DIAL_CX = 160, DIAL_CY = 160, DIAL_R = 120;
 
 function polar(cx, cy, r, deg) {
@@ -470,6 +479,7 @@ function wireDial() {
 
 function render(s) {
   state = s;
+  setTempRange(s.temp_unit || "C");
   document.body.classList.toggle("power-off", !s.power);
 
   // Power switch

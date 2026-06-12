@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"strings"
 	"syscall"
 	"time"
 
@@ -93,7 +94,7 @@ func diffMap(a, b map[string]any) map[string]bool {
 func fmtState(m map[string]any) string {
 	return fmt.Sprintf("power=%v heat=%v filter=%v wave=%v locked=%v  now=%d set=%d",
 		m["power"], m["heat_power"], m["filter_power"], m["wave_power"], m["locked"],
-		m["temp_set"], m["temp_set"])
+		m["temp_now"], m["temp_set"])
 }
 
 func fmtChanges(prev, curr map[string]any, diff map[string]bool) string {
@@ -101,16 +102,5 @@ func fmtChanges(prev, curr map[string]any, diff map[string]bool) string {
 	for k := range diff {
 		parts = append(parts, fmt.Sprintf("%s %v→%v", color(cBold, k), prev[k], curr[k]))
 	}
-	return joinSpace(parts)
-}
-
-func joinSpace(parts []string) string {
-	out := ""
-	for i, p := range parts {
-		if i > 0 {
-			out += "  "
-		}
-		out += p
-	}
-	return out
+	return strings.Join(parts, "  ")
 }

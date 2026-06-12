@@ -2,6 +2,7 @@ package sched
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -150,6 +151,35 @@ func TestTickRetriesAfterFailure(t *testing.T) {
 	s.tick(context.Background(), at(11, 1))
 	if len(ft.writes) != 1 || ft.writes[0]["heat_power"] != 1 {
 		t.Fatalf("expected a retried start write, got %v", ft.writes)
+	}
+}
+
+// A Replace that can't be persisted must not take effect: otherwise the client
+// gets an error while the (unsaved) schedules silently run until restart.
+func TestReplaceKeepsOldListWhenPersistFails(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "schedules.json")
+	s := New(path, &fakeTub{}, nil)
+
+	if _, err := s.Replace([]Schedule{{Enabled: true, Start: "10:00", Stop: "12:00", Mode: ModeHeat}}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Make the save fail: replace the data dir path with a regular file so
+	// writing path+".tmp" inside it is impossible.
+	blocker := filepath.Join(dir, "blocked")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s.path = filepath.Join(blocker, "schedules.json")
+
+	_, err := s.Replace([]Schedule{{Enabled: true, Start: "06:00", Stop: "08:00", Mode: ModeAll}})
+	if err == nil {
+		t.Fatal("expected an error when persisting fails")
+	}
+	got := s.List()
+	if len(got) != 1 || got[0].Start != "10:00" {
+		t.Errorf("failed Replace must leave the old list active, got %v", got)
 	}
 }
 

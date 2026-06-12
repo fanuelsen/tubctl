@@ -4,10 +4,11 @@
 // no cloud, no Bestway account.
 //
 // Subcommands:
-//   tubctl serve         start the HTTP server + web UI (default in container)
-//   tubctl state         print current tub state once and exit
-//   tubctl set key=val   write one or more attributes and verify
-//   tubctl watch         poll status continuously and show diffs
+//
+//	tubctl serve         start the HTTP server + web UI (default in container)
+//	tubctl state         print current tub state once and exit
+//	tubctl set key=val   write one or more attributes and verify
+//	tubctl watch         poll status continuously and show diffs
 package main
 
 import (

@@ -3,6 +3,7 @@ package web
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -45,6 +46,46 @@ func TestGuardWrite(t *testing.T) {
 		if got := s.guardWrite(w, r); got != c.want {
 			t.Errorf("%s: guardWrite = %v (status %d), want %v", c.name, got, w.Code, c.want)
 		}
+	}
+}
+
+// Every response must carry the hardening headers (defense-in-depth for the
+// localStorage auth token: no framing, no MIME sniffing, no referrer leaks).
+func TestSecurityHeaders(t *testing.T) {
+	s := &Server{TimeFormat: "24"}
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/config", nil))
+
+	want := map[string]string{
+		"X-Content-Type-Options": "nosniff",
+		"X-Frame-Options":        "DENY",
+		"Referrer-Policy":        "no-referrer",
+	}
+	for k, v := range want {
+		if got := w.Header().Get(k); got != v {
+			t.Errorf("%s = %q, want %q", k, got, v)
+		}
+	}
+	csp := w.Header().Get("Content-Security-Policy")
+	if !strings.Contains(csp, "frame-ancestors 'none'") || !strings.Contains(csp, "default-src 'self'") {
+		t.Errorf("Content-Security-Policy = %q, want frame-ancestors 'none' and default-src 'self'", csp)
+	}
+}
+
+// clientIP must come from the socket (RemoteAddr), never from the spoofable
+// X-Forwarded-For header — the set log is sold as an audit trail.
+func TestClientIPIgnoresForwardedFor(t *testing.T) {
+	r := httptest.NewRequest(http.MethodPost, "/api/set", nil)
+	r.RemoteAddr = "192.168.1.7:54321"
+	r.Header.Set("X-Forwarded-For", "6.6.6.6")
+	if got := clientIP(r); got != "192.168.1.7" {
+		t.Errorf("clientIP = %q, want %q (socket address, not XFF)", got, "192.168.1.7")
+	}
+
+	// IPv6 RemoteAddr must not be mangled by naive colon-splitting.
+	r.RemoteAddr = "[fe80::1]:50000"
+	if got := clientIP(r); got != "fe80::1" {
+		t.Errorf("clientIP = %q, want %q", got, "fe80::1")
 	}
 }
 

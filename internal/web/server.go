@@ -66,13 +66,30 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", s.handleHealth)
 	mux.HandleFunc("GET /api/config", s.handleConfig)
-	mux.HandleFunc("GET /api/state",  s.handleState)
+	mux.HandleFunc("GET /api/state", s.handleState)
 	mux.HandleFunc("GET /api/events", s.handleEvents)
-	mux.HandleFunc("POST /api/set",   s.handleSet)
+	mux.HandleFunc("POST /api/set", s.handleSet)
 	mux.HandleFunc("GET /api/schedules", s.handleGetSchedules)
 	mux.HandleFunc("PUT /api/schedules", s.handlePutSchedules)
 	mux.Handle("/", http.FileServer(http.FS(s.Static)))
-	return mux
+	return securityHeaders(mux)
+}
+
+// securityHeaders adds hardening headers to every response. Defense-in-depth
+// for the localStorage auth token: forbid framing, MIME sniffing, and referrer
+// leakage, and restrict the page to same-origin resources. script-src/style-src
+// need 'unsafe-inline' because index.html inlines both (single-file UI).
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("Content-Security-Policy",
+			"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "+
+				"img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "no-referrer")
+		next.ServeHTTP(w, r)
+	})
 }
 
 // ensureConnected makes sure the tub client is logged in, dialing if needed.
@@ -328,9 +345,9 @@ func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
 	// This gives operators visibility into every control action.
 	changes := stateDiff(before, after, updates)
 	if len(changes) > 0 {
-		s.Log.Info("set", "changes", changes, "from", subset(before, updates), "ip", clientIP(r))
+		s.Log.Info("set", "changes", changes, "from", subset(before, updates), "ip", clientIP(r), "xff", forwardedFor(r))
 	} else {
-		s.Log.Info("set (no-op)", "requested", updates, "ip", clientIP(r))
+		s.Log.Info("set (no-op)", "requested", updates, "ip", clientIP(r), "xff", forwardedFor(r))
 	}
 
 	writeJSON(w, http.StatusOK, after)
@@ -361,7 +378,7 @@ func (s *Server) handlePutSchedules(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	s.Log.Info("schedules updated", "count", len(saved), "ip", clientIP(r))
+	s.Log.Info("schedules updated", "count", len(saved), "ip", clientIP(r), "xff", forwardedFor(r))
 	writeJSON(w, http.StatusOK, saved)
 }
 
@@ -397,25 +414,31 @@ func reflectEqual(a, b any) bool {
 	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
 }
 
-// clientIP best-effort extracts the requester IP for the log line.
+// clientIP extracts the requester IP from the socket address for the log line.
+// X-Forwarded-For is deliberately ignored: it's client-controlled, and the set
+// log doubles as an audit trail. When present it's logged separately (see
+// forwardedFor) so reverse-proxy deployments still get the upstream hint.
 func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		return xff
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
 	}
-	host := r.RemoteAddr
-	if i := indexLastColon(host); i >= 0 {
-		return host[:i]
-	}
-	return host
+	return r.RemoteAddr
 }
 
-func indexLastColon(s string) int {
-	for i := len(s) - 1; i >= 0; i-- {
-		if s[i] == ':' {
-			return i
-		}
+// forwardedFor returns a sanitized X-Forwarded-For value for logging, or "".
+// Untrusted input: cap the length and strip control characters so a client
+// can't stuff garbage or fake extra fields into the log line.
+func forwardedFor(r *http.Request) string {
+	xff := r.Header.Get("X-Forwarded-For")
+	if len(xff) > 100 {
+		xff = xff[:100]
 	}
-	return -1
+	return strings.Map(func(c rune) rune {
+		if c < 0x20 || c == 0x7f {
+			return -1
+		}
+		return c
+	}, xff)
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {

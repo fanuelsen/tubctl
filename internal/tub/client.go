@@ -27,10 +27,13 @@ type Client struct {
 	// reads/writes concurrently, so this must be held for each full exchange.
 	opMu sync.Mutex
 
+	// writeSeq is atomic (not guarded by mu): Write bumps it outside the lock,
+	// and Connect resets it — mixing a plain store with atomic adds is a race.
+	writeSeq atomic.Uint32
+
 	mu        sync.Mutex
 	conn      net.Conn
 	loggedIn  bool
-	writeSeq  uint32
 	stopHB    chan struct{}
 	readCh    chan *Status
 	writeCh   map[uint32]chan struct{} // seq → done signal
@@ -77,7 +80,7 @@ func (c *Client) Connect(ctx context.Context) error {
 
 	c.mu.Lock()
 	c.conn = conn
-	c.writeSeq = 0
+	c.writeSeq.Store(0)
 	c.stopHB = make(chan struct{})
 	// drain any stale items from readCh
 	for {
@@ -195,7 +198,7 @@ func (c *Client) Write(ctx context.Context, updates map[string]any, current *Sta
 	if err != nil {
 		return err
 	}
-	seq := atomic.AddUint32(&c.writeSeq, 1)
+	seq := c.writeSeq.Add(1)
 	body := make([]byte, 4+len(p0))
 	binary.BigEndian.PutUint32(body[:4], seq)
 	copy(body[4:], p0)
@@ -264,12 +267,18 @@ func (c *Client) dispatch(f Frame, loginDone chan<- error) {
 	case CmdPasscodeResp:
 		// payload: 2-byte length + N bytes passcode
 		if len(f.Payload) < 2 {
-			select { case loginDone <- errors.New("short passcode resp"): default: }
+			select {
+			case loginDone <- errors.New("short passcode resp"):
+			default:
+			}
 			return
 		}
 		pcLen := int(binary.BigEndian.Uint16(f.Payload[:2]))
 		if len(f.Payload) < 2+pcLen {
-			select { case loginDone <- errors.New("truncated passcode"): default: }
+			select {
+			case loginDone <- errors.New("truncated passcode"):
+			default:
+			}
 			return
 		}
 		passcode := f.Payload[2 : 2+pcLen]
@@ -286,9 +295,15 @@ func (c *Client) dispatch(f Frame, loginDone chan<- error) {
 
 	case CmdLoginResp:
 		if len(f.Payload) >= 1 && f.Payload[0] == 0x00 {
-			select { case loginDone <- nil: default: }
+			select {
+			case loginDone <- nil:
+			default:
+			}
 		} else {
-			select { case loginDone <- errors.New("login rejected"): default: }
+			select {
+			case loginDone <- errors.New("login rejected"):
+			default:
+			}
 		}
 
 	case CmdReadResp:
@@ -317,7 +332,10 @@ func (c *Client) dispatch(f Frame, loginDone chan<- error) {
 		ch := c.writeCh[seq]
 		c.mu.Unlock()
 		if ch != nil {
-			select { case ch <- struct{}{}: default: }
+			select {
+			case ch <- struct{}{}:
+			default:
+			}
 		}
 
 	case CmdPong:

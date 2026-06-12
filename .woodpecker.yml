@@ -1,8 +1,11 @@
 steps:
-  # Step 1: Run tests
+  # Step 1: Format check, vet, tests
   test:
     image: golang:1.26.4-alpine
     commands:
+      # gofmt -l prints offending files; any output fails the build
+      - test -z "$(gofmt -l .)" || { echo "gofmt needed on:"; gofmt -l .; exit 1; }
+      - go vet ./...
       - go test -v ./...
     when:
       event:

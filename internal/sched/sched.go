@@ -107,15 +107,17 @@ func (s *Scheduler) Replace(list []Schedule) ([]Schedule, error) {
 		cleaned = append(cleaned, sc)
 	}
 
+	// Persist before installing: if the save fails the old list stays active,
+	// so the error the client sees matches what the scheduler actually runs.
+	if err := s.save(cleaned); err != nil {
+		s.log.Warn("schedules save failed", "path", s.path, "err", err)
+		return nil, fmt.Errorf("persisting schedules: %w", err)
+	}
+
 	s.mu.Lock()
 	s.schedules = cleaned
 	s.inWindow = map[string]bool{} // force reconcile on next tick
 	s.mu.Unlock()
-
-	if err := s.save(); err != nil {
-		s.log.Warn("schedules save failed", "path", s.path, "err", err)
-		return cleaned, fmt.Errorf("persisting schedules: %w", err)
-	}
 	return cleaned, nil
 }
 
@@ -238,10 +240,8 @@ func (s *Scheduler) load() error {
 	return nil
 }
 
-func (s *Scheduler) save() error {
-	s.mu.Lock()
-	b, err := json.MarshalIndent(s.schedules, "", "  ")
-	s.mu.Unlock()
+func (s *Scheduler) save(list []Schedule) error {
+	b, err := json.MarshalIndent(list, "", "  ")
 	if err != nil {
 		return err
 	}

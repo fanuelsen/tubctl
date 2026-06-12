@@ -8,24 +8,24 @@ import (
 // Status is one decoded snapshot of the tub's state.
 // JSON tags match the existing API surface so the existing frontend works unchanged.
 type Status struct {
-	Power           bool   `json:"power"`
-	HeatPower       bool   `json:"heat_power"`
-	FilterPower     bool   `json:"filter_power"`
-	WavePower       bool   `json:"wave_power"`
-	Locked          bool   `json:"locked"`
-	Earth           bool   `json:"earth"`
-	TempSetUnit     int    `json:"temp_set_unit"` // 0=F, 1=C (raw)
-	TempUnit        string `json:"temp_unit"`     // "C" or "F" (friendly)
-	TempSet         uint8  `json:"temp_set"`
-	HeatAppmMin     uint16 `json:"heat_appm_min"`
-	HeatTimerMin    uint16 `json:"heat_timer_min"`
-	FilterAppmMin   uint16 `json:"filter_appm_min"`
-	FilterTimerMin  uint16 `json:"filter_timer_min"`
-	WaveAppmMin     uint16 `json:"wave_appm_min"`
-	WaveTimerMin    uint16 `json:"wave_timer_min"`
-	TempNow         uint8  `json:"temp_now"`
-	HeatTempReach   bool   `json:"heat_temp_reach"`
-	Errors          []string `json:"errors"`
+	Power          bool     `json:"power"`
+	HeatPower      bool     `json:"heat_power"`
+	FilterPower    bool     `json:"filter_power"`
+	WavePower      bool     `json:"wave_power"`
+	Locked         bool     `json:"locked"`
+	Earth          bool     `json:"earth"`
+	TempSetUnit    int      `json:"temp_set_unit"` // 0=F, 1=C (raw)
+	TempUnit       string   `json:"temp_unit"`     // "C" or "F" (friendly)
+	TempSet        uint8    `json:"temp_set"`
+	HeatAppmMin    uint16   `json:"heat_appm_min"`
+	HeatTimerMin   uint16   `json:"heat_timer_min"`
+	FilterAppmMin  uint16   `json:"filter_appm_min"`
+	FilterTimerMin uint16   `json:"filter_timer_min"`
+	WaveAppmMin    uint16   `json:"wave_appm_min"`
+	WaveTimerMin   uint16   `json:"wave_timer_min"`
+	TempNow        uint8    `json:"temp_now"`
+	HeatTempReach  bool     `json:"heat_temp_reach"`
+	Errors         []string `json:"errors"`
 }
 
 var errorBits = [...]string{
@@ -99,6 +99,12 @@ func (s *Status) Map() map[string]any {
 		"filter_timer_min": int(s.FilterTimerMin),
 		"wave_appm_min":    int(s.WaveAppmMin),
 		"wave_timer_min":   int(s.WaveTimerMin),
+		// Read-only fields. Write paths only ever look up the attrs a request
+		// asked for (all writable), so these extra keys are inert there — but
+		// `tubctl watch` diffs the whole map and needs them to report changes.
+		"temp_now":        int(s.TempNow),
+		"heat_temp_reach": s.HeatTempReach,
+		"errors":          s.Errors,
 	}
 }
 
