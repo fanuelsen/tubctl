@@ -1,5 +1,5 @@
 # --- build stage ---
-FROM golang:1.27.0-alpine AS build
+FROM golang:1.27.1-alpine AS build
 WORKDIR /src
 # go.mod/go.sum first for layer caching
 COPY go.mod ./
